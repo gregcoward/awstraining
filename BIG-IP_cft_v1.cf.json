@@ -228,7 +228,7 @@
                 },
                 "\n",
                 "# Signal the status from cfn-init\n",
-                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e ${?} ",
+                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? ",
                 "--stack ",
                 { 
                   "Ref" : "AWS::StackId"
