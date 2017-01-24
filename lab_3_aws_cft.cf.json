@@ -113,97 +113,6 @@
 
     "BIGIPInstance": {
       "Type": "AWS::EC2::Instance",
-      "Metadata": {
-        "AWS::CloudFormation::Init": {
-          "config": {
-            "files": {
-              "/config/cloud/aws/firstrun.utils": {
-                "group": "root",
-                "mode": "000755",
-                "owner": "root",
-                "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
-              },
-              "/config/cloud/f5-cloud-libs.tar.gz": {
-                "group": "root",
-                "mode": "000755",
-                "owner": "root",
-                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz"
-              },
-              "/config/cloud/aws/getNameServer.sh": {
-                "content": {
-                  "Fn::Join": [
-                    "\n",
-                    [
-                      "INTERFACE=$1",
-                      "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                      "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                      "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
-                      "VPC_NET=${VPC_CIDR_BLOCK%/*}",
-                      "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
-                      "echo $NAME_SERVER"
-                    ]
-                  ]
-                },
-                "mode": "000755",
-                "owner": "root",
-                "group": "root"
-              }
-            },
-            "commands": {
-              "001-unpack-libs": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "tar xvzf /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/;",
-                      "mv /config/cloud/aws/F5Networks-f5-cloud-libs-* /config/cloud/aws/f5-cloud-libs;",
-                      "cd /config/cloud/aws/f5-cloud-libs;",
-                      "npm install --production;"
-                    ]
-                  ]
-                }
-              },
-              "003-onboard-BIG-IP": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "NAME_SERVER=$( /config/cloud/aws/getNameServer.sh eth0 );",
-                      "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
-                      "--ssl-port '8443'",
-                      "--log-level verbose",
-                      "-o  /var/log/onboard.log",
-                      "--no-reboot",
-                      "--host localhost",
-                      "--user admin ",
-                      "--password '",
-                      {
-                        "Ref": "adminPassword"
-                      },
-                      "'",
-                      "--update-user 'user:",
-                      {
-                        "Ref": "adminUsername"
-                      },
-                      ",password:",
-                      {
-                        "Ref": "adminPassword"
-                      },
-                      ",role:admin'",
-                      "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
-                      "--ntp 0.us.pool.ntp.org",
-                      "--ntp 1.us.pool.ntp.org",
-                      "--tz UTC",
-                      "--dns ${NAME_SERVER}",
-                      "--module ltm:nominal"
-                    ]
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
       "Properties": {
         "InstanceType"   : { "Ref" : "InstanceType" },
         "ImageId": { "Ref" : "BIGIPAMI" },
@@ -231,12 +140,6 @@
             ]
           }
         }        
-      },
-      "CreationPolicy": {
-        "ResourceSignal": {
-          "Timeout": "PT15M",
-          "Count" : 1
-        }
       }
     }
   },
