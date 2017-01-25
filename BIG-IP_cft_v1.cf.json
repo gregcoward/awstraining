@@ -215,6 +215,8 @@
             "Fn::Join": [
               "",
               [
+                "<script>\n",
+
                 "#!/bin/bash\n",
                 "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-init -v -s ",
                 {
@@ -226,17 +228,31 @@
                 {
                   "Ref": "AWS::Region"
                 },
-                "\n"
+                "\n",
+                "cfn-signal.exe -e $? ", 
+                {
+                    "Ref" : "BIGIPInstanceWaitHandle"
+                }, 
+                "\n",
+
+                "</script>"
               ]
             ]
           }
         }        
-      },
-      "CreationPolicy": {
-        "ResourceSignal": {
-          "Timeout": "PT15M",
-          "Count" : 1
-        }
+      }
+    },
+
+    "BIGIPInstanceWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+
+    "BIGIPInstanceWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "BIGIPInstance",
+      "Properties" : {
+        "Handle" : {"Ref" : "BIGIPInstanceWaitHandle"},
+        "Timeout" : "900"
       }
     }
   },
