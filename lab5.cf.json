@@ -12,7 +12,9 @@
                     },
                     "Parameters" : [
                         "Name",
-                        "KeyName"
+                        "KeyName",
+                        "adminUsername",
+                        "adminPassword"
                     ]
                 },
                 {
@@ -47,6 +49,19 @@
       "Description" :"The name of the Windows Server.",
       "Type" : "String"
     },
+    "adminUsername": {
+      "Type": "String",
+      "Description": "An admin username for loging into the Windows Server and BIG-IP.",
+      "MaxLength": "255",
+      "MinLength": "1"
+    },
+    "adminPassword": {
+      "Type": "String",
+      "NoEcho": "true",
+      "Description": "A password that will be used to login to the Windows Server and BIG-IP.",
+      "MaxLength": "255",
+      "MinLength": "1"
+    },
     "InstanceType" : {
       "Description" : "EC2 instance type",
       "Type" : "String",
@@ -57,7 +72,7 @@
     "WindowsAMI": {
       "Description" : "Windows Version and Region AMI",
       "Type" : "String",
-      "Default" : "ami-24e64944"      
+      "Default" : "ami-bdb618dd"      
     }
   },
    
@@ -169,19 +184,36 @@
                                                           " --region ", { "Ref" : "AWS::Region" }, "\n"
                           ]]}
                         },
-                        "C:\\Users\\Administrator\\Downloads\\firstrun.ps1"    : {
-                            "content" : { "Fn::Join" : [ "", [
+                        "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
+                          "content": {
+                            "Fn::Join": [
+                              "",
+                              [
                                 "echo \"Installing web-webserver\"\n",
                                 "add-windowsfeature web-webserver -includeallsubfeature -logpath $env:temp\\webserver_addrole.log\n",
                                 "echo \"Installing web-mgmt-tools\"\n",
                                 "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
                                 "echo \"This is the first Windows IIS Server ",
-                                {"Ref" : "Name"},
-                                "\" >> C:\\inetpub\\wwwroot\\index.html\n"
-                                ]]
-                            }
-                        }                        
-                    },
+                                {
+                                  "Ref": "Name"
+                                },
+                                "\" >> C:\\inetpub\\wwwroot\\index.html\n",
+                                "$pass = ConvertTo-SecureString \"",
+                                {
+                                  "Ref": "adminPassword"
+                                },
+                                "\" -AsPlainText -Force\n",
+                                "New-LocalUser -Name \"tstanley\" -Password $pass -PasswordNeverExpires\n",
+                                "Add-LocalGroupMember -Group \"Administrators\" -Member \"",
+                                {
+                                  "Ref": "adminUsername"
+                                },
+                                "\"\n"
+                              ]
+                            ]
+                          }
+                        }
+                      },
                     "commands" : {
                         "b-configure" : {
                             "command" : "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"

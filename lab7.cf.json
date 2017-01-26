@@ -1,16 +1,14 @@
 {
-  "AWSTemplateFormatVersion" : "2010-09-09",
- 
-  "Description" : "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single server of Microsoft Windows Server 2012 R2, and then finally configures IIS.",
-
-  "Metadata"                 : {
-        "AWS::CloudFormation::Interface" : {
-            "ParameterGroups" : [
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single server of Microsoft Windows Server 2012 R2, and then finally configures IIS.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
                 {
-                    "Label" : {
-                        "default" : "Basics"
+                    "Label": {
+                        "default": "Basics"
                     },
-                    "Parameters" : [
+                    "Parameters": [
                         "WindowsName",
                         "BIGIPName",
                         "KeyName",
@@ -19,519 +17,752 @@
                     ]
                 },
                 {
-                    "Label" : {
-                        "default" : "Size"
+                    "Label": {
+                        "default": "Size"
                     },
-                    "Parameters" : [
+                    "Parameters": [
                         "WindowsInstanceType",
                         "BIGIPInstanceType"
-
                     ]
                 },
                 {
-                    "Label" : {
-                        "default" : "Settings"
+                    "Label": {
+                        "default": "Settings"
                     },
-                    "Parameters" : [
+                    "Parameters": [
                         "WindowsAMI",
                         "BIGIPAMI"
                     ]
                 }
             ],
-            "ParameterLabels" : {              
-            }
+            "ParameterLabels": {}
         }
     },
- 
-  "Parameters": {
-    "KeyName" : {
-      "Description" : "Name of an existing EC2 KeyPair",
-      "Type" : "AWS::EC2::KeyPair::KeyName",
-      "ConstraintDescription" : "Must be the name of an existing EC2 KeyPair."
-    },
-    "adminUsername": {
-      "Type": "String",
-      "Description": "An admin username for loging into the Windows Server and BIG-IP.",
-      "MaxLength": "255",
-      "MinLength": "1"
-    },
-    "adminPassword": {
-      "Type": "String",
-      "NoEcho": "true",
-      "Description": "A password that will be used to login to the Windows Server and BIG-IP.",
-      "MaxLength": "255",
-      "MinLength": "1"
-    },
-    "WindowsName": {
-      "Description" :"The name of the Windows Server.",
-      "Type" : "String"
-    },
-    "BIGIPName": {
-      "Description" :"The name of the Windows Server.",
-      "Type" : "String"
-    },
-    "WindowsInstanceType": {
-        "Description": "EC2 instance type",
-        "Type": "String",
-        "Default": "t2.small",
-        "AllowedValues": [
-            "t1.micro",
-            "t2.micro",
-            "t2.small",
-            "t2.medium",
-            "m1.small",
-            "m1.medium",
-            "m1.large",
-            "m1.xlarge",
-            "m2.xlarge",
-            "m2.2xlarge",
-            "m2.4xlarge",
-            "m3.medium",
-            "m3.large",
-            "m3.xlarge",
-            "m3.2xlarge",
-            "c1.medium",
-            "c1.xlarge",
-            "c3.large",
-            "c3.xlarge",
-            "c3.2xlarge",
-            "c3.4xlarge",
-            "c3.8xlarge",
-            "c4.large",
-            "c4.xlarge",
-            "c4.2xlarge",
-            "c4.4xlarge",
-            "c4.8xlarge",
-            "g2.2xlarge",
-            "r3.large",
-            "r3.xlarge",
-            "r3.2xlarge",
-            "r3.4xlarge",
-            "r3.8xlarge",
-            "i2.xlarge",
-            "i2.2xlarge",
-            "i2.4xlarge",
-            "i2.8xlarge",
-            "d2.xlarge",
-            "d2.2xlarge",
-            "d2.4xlarge",
-            "d2.8xlarge",
-            "hi1.4xlarge",
-            "hs1.8xlarge",
-            "cr1.8xlarge",
-            "cc2.8xlarge",
-            "cg1.4xlarge"
-        ],
-        "ConstraintDescription": "Choose one of the ."
-    },
-    "WindowsAMI": {
-      "Description" : "Windows Version and Region AMI",
-      "Type" : "String",
-      "Default" : "ami-24e64944"      
-    },
-    "BIGIPInstanceType": {
-        "Description": "EC2 instance type",
-        "Type": "String",
-        "Default": "m3.xlarge",
-        "AllowedValues": [
-            "m3.xlarge",
-            "m3.2xlarge",
-            "c1.medium",
-            "c1.xlarge",
-            "cc1.4xlarge",
-            "cc2.8xlarge",
-            "cg1.4xlarge"
-        ],
-        "ConstraintDescription": "Choose one of these."
-    },
-    "BIGIPAMI": {
-      "Description": "F5 BIG-IP AMI to install from.",
-      "Type": "String",
-      "Default": "ami-0b7a011c"
-    }
-  },
-   
-  "Resources" : {
-    "StackVPC" : {
-      "Type" : "AWS::EC2::VPC",
-      "Properties" : {
-        "EnableDnsSupport" : "true",
-        "EnableDnsHostnames" : "true",
-        "CidrBlock" : "10.10.0.0/16",
-        "Tags" : [ {"Key" : "Name", "Value" : { "Fn::Join" : [ "", [
-            "VPC-",
-            { "Ref" : "AWS::StackName"}
-        ]]}}]
-      }
-    },
-
-    "StackSubnet" : {
-      "Type" : "AWS::EC2::Subnet",
-      "Properties" : {
-        "VpcId" : { "Ref" : "StackVPC" },
-        "CidrBlock" : "10.10.20.0/24",
-        "MapPublicIpOnLaunch" : true,
-        "Tags" : [ {"Key" : "Name", "Value" : { "Fn::Join" : [ "", [
-            "Subnet-",
-            { "Ref" : "AWS::StackName"}
-        ]]}}]
-      }
-    },
-
-    "StackInternetGateway" : {
-      "Type" : "AWS::EC2::InternetGateway",
-      "Properties" : {
-        "Tags" : [ {"Key" : "Name", "Value" : { "Fn::Join" : [ "", [
-            "InternetGateway-",
-            { "Ref" : "AWS::StackName"}
-        ]]}}]
-      }
-    },
-
-    "AttachGateway" : {
-       "Type" : "AWS::EC2::VPCGatewayAttachment",
-       "Properties" : {
-         "VpcId" : { "Ref" : "StackVPC" },
-         "InternetGatewayId" : { "Ref" : "StackInternetGateway" }
-       }
-    },
-
-    "ExternalRouteTable" : {
-        "Type" : "AWS::EC2::RouteTable",
-        "Properties" : {
-            "VpcId" : {"Ref" : "StackVPC"},
-            "Tags" : [ {"Key" : "Name", "Value" : { "Fn::Join" : [ "", [
-            "ExternalRouteTable-",
-            { "Ref" : "AWS::StackName"}
-            ]]}}]
-        }
-    },
-
-    "ExternalRoute" : {
-        "Type" : "AWS::EC2::Route",
-        "Properties" : {
-            "RouteTableId" : { "Ref" : "ExternalRouteTable"},
-            "DestinationCidrBlock" : "0.0.0.0/0",
-            "GatewayId" : { "Ref" : "StackInternetGateway" }
-            }
-    },
-
-    "ExternalSubnetRouteTableAssociation" : {
-        "Type" : "AWS::EC2::SubnetRouteTableAssociation",
-        "Properties" : {
-            "SubnetId" : { "Ref" : "StackSubnet" },
-            "RouteTableId" : { "Ref" : "ExternalRouteTable" }
-            }
-    },
-
-    "BIGIPSecurityGroup": {
-        "Type": "AWS::EC2::SecurityGroup",
-        "Properties": {
-            "GroupDescription": "Enable HTTP and RDP",
-            "VpcId": {
-                "Ref": "StackVPC"
-            },
-            "SecurityGroupIngress": [
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": "80",
-                    "ToPort": "80",
-                    "CidrIp": "0.0.0.0/0"
-                },
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": "8443",
-                    "ToPort": "8443",
-                    "CidrIp": "0.0.0.0/0"
-                },
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": "443",
-                    "ToPort": "443",
-                    "CidrIp": "0.0.0.0/0"
-                },
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": "22",
-                    "ToPort": "22",
-                    "CidrIp": "0.0.0.0/0"
-                }
+    "Parameters": {
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
+        },
+        "adminUsername": {
+            "Type": "String",
+            "Description": "An admin username for loging into the Windows Server and BIG-IP.",
+            "MaxLength": "255",
+            "MinLength": "1"
+        },
+        "adminPassword": {
+            "Type": "String",
+            "NoEcho": "true",
+            "Description": "A password that will be used to login to the Windows Server and BIG-IP.",
+            "MaxLength": "255",
+            "MinLength": "1"
+        },
+        "WindowsName": {
+            "Description": "The name of the Windows Server.",
+            "Type": "String"
+        },
+        "BIGIPName": {
+            "Description": "The name of the Windows Server.",
+            "Type": "String"
+        },
+        "WindowsInstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "t2.small",
+            "AllowedValues": [
+                "t1.micro",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "g2.2xlarge",
+                "r3.large",
+                "r3.xlarge",
+                "r3.2xlarge",
+                "r3.4xlarge",
+                "r3.8xlarge",
+                "i2.xlarge",
+                "i2.2xlarge",
+                "i2.4xlarge",
+                "i2.8xlarge",
+                "d2.xlarge",
+                "d2.2xlarge",
+                "d2.4xlarge",
+                "d2.8xlarge",
+                "hi1.4xlarge",
+                "hs1.8xlarge",
+                "cr1.8xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "Choose one of the ."
+        },
+        "WindowsAMI": {
+            "Description": "Windows Version and Region AMI",
+            "Type": "String",
+            "Default": "ami-bdb618dd",
+            "AllowedValues": [
+                "ami-bdb618dd",
+                "ami-fc97a7eb"
+            ]
+        },
+        "BIGIPInstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m3.xlarge",
+            "AllowedValues": [
+                "m3.xlarge",
+                "m3.2xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "cc1.4xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "Choose one of these."
+        },
+        "BIGIPAMI": {
+            "Description": "F5 BIG-IP AMI to install from.",
+            "Type": "String",
+            "Default": "ami-8633efe6",
+            "AllowedValues": [
+                "ami-8633efe6",
+                "ami-0b7a011c"
             ]
         }
     },
-
-    "WindowsSecurityGroup": {
-        "Type": "AWS::EC2::SecurityGroup",
-        "Properties": {
-            "GroupDescription": "Enable HTTP and RDP",
-            "VpcId": {
-                "Ref": "StackVPC"
-            },
-            "SecurityGroupIngress": [
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": "80",
-                    "ToPort": "80",
-                    "CidrIp": "0.0.0.0/0"
-                },
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": "3389",
-                    "ToPort": "3389",
-                    "CidrIp": "0.0.0.0/0"
-                }
-            ]
-        }
-    },
-
-    "BIGIPInstance": {
-      "Type": "AWS::EC2::Instance",
-      "Metadata": {
-        "AWS::CloudFormation::Init": {
-            "configSets": {
-                "BigIP_Install": [
-                    "install_CloudLibs",
-                    "onBoard"
+    "Resources": {
+        "StackVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "EnableDnsSupport": "true",
+                "EnableDnsHostnames": "true",
+                "CidrBlock": "10.10.0.0/16",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "VPC-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
                 ]
-            },
-            "install_CloudLibs": {
-                "files": {
-                    "/config/cloud/aws/firstrun.utils": {
-                        "group": "root",
-                        "mode": "000755",
-                        "owner": "root",
-                        "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
-                    },
-                    "/config/cloud/f5-cloud-libs.tar.gz": {
-                        "group": "root",
-                        "mode": "000755",
-                        "owner": "root",
-                        "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz"
-                    },
-                    "/config/cloud/aws/getNameServer.sh": {
-                        "content": {
-                            "Fn::Join": [
-                                "\n",
-                                [
-                                    "INTERFACE=$1",
-                                    "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                    "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                    "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
-                                    "VPC_NET=${VPC_CIDR_BLOCK%/*}",
-                                    "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
-                                    "echo $NAME_SERVER"
-                                ]
-                            ]
-                        },
-                        "mode": "000755",
-                        "owner": "root",
-                        "group": "root"
-                    }
-                },
-                "commands": {
-                    "001-unpack-libs": {
-                        "command": {
-                            "Fn::Join": [
-                                " ",
-                                [
-                                    "tar xvzf /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/;",
-                                    "mv /config/cloud/aws/F5Networks-f5-cloud-libs-* /config/cloud/aws/f5-cloud-libs;",
-                                    "cd /config/cloud/aws/f5-cloud-libs;",
-                                    "npm install --production;"
-                                ]
-                            ]
-                        }
-                    }
-                }
-            },
-            "onBoard": {
-                "commands": {
-                    "003-onboard-BIG-IP": {
-                        "command": {
-                            "Fn::Join": [
-                                " ",
-                                [
-                                    "NAME_SERVER=$( /config/cloud/aws/getNameServer.sh eth0 );",
-                                    "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
-                                    "--ssl-port '8443'",
-                                    "--log-level verbose",
-                                    "-o  /var/log/onboard.log",
-                                    "--no-reboot",
-                                    "--host localhost",
-                                    "--user admin ",
-                                    "--password '",
-                                    {
-                                        "Ref": "adminPassword"
-                                    },
-                                    "'",
-                                    "--update-user 'user:",
-                                    {
-                                        "Ref": "adminUsername"
-                                    },
-                                    ",password:",
-                                    {
-                                        "Ref": "adminPassword"
-                                    },
-                                    ",role:admin'",
-                                    "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
-                                    "--ntp 0.us.pool.ntp.org",
-                                    "--ntp 1.us.pool.ntp.org",
-                                    "--tz UTC",
-                                    "--dns ${NAME_SERVER}",
-                                    "--module ltm:nominal"
-                                ]
-                            ]
-                        }
-                    }
-                }
             }
-        }
-    },
-      "Properties": {
-        "InstanceType"   : { "Ref" : "BIGIPInstanceType" },
-        "ImageId": { "Ref" : "BIGIPAMI" },
-        "KeyName" : { "Ref" : "KeyName" },
-        "SubnetId" : { "Ref" : "StackSubnet"},
-        "SecurityGroupIds" : [ {"Fn::GetAtt" : [ "BIGIPSecurityGroup", "GroupId" ]} ],
-        "UserData": {
-          "Fn::Base64": {
-            "Fn::Join": [
-              "",
-            [
-                "#!/bin/bash\n",
-                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-init -v ",
-                "       --stack ", { "Ref": "AWS::StackName" },
-                "       --resource BIGIPInstance",
-                "       --configsets BigIP_Install ",
-                "       --region ", { "Ref": "AWS::Region" }, "\n",
-
-                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal.exe -e $? ",
-                "         --stack ", { "Ref": "AWS::StackName" },
-                "         --resource BIGIPInstance ",
-                "         --region ", { "Ref": "AWS::Region" }, "\n"
-            ]
-            ]
-          }
-        }        
-      },
-      "CreationPolicy": {
-        "ResourceSignal": {
-            "Timeout": "PT1H"
-        }
-      }
-    },
-
-    "WindowsInstance": {  
-      "Type": "AWS::EC2::Instance",
-      "Metadata" : {
-            "AWS::CloudFormation::Init" : {
-                "configSets": {
-                    "IIS_Install": [
-                        "install_IIS"
-                    ]
+        },
+        "StackSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
                 },
-                "IIS_Install":{
-                    "files" : {
-                        "c:\\cfn\\cfn-hup.conf" : {
-                          "content" : { "Fn::Join" : ["", [
-                            "[main]\n",
-                            "stack=", { "Ref" : "AWS::StackId" }, "\n",
-                            "region=", { "Ref" : "AWS::Region" }, "\n"
-                            ]]}
-                        },
-                        "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf" : {
-                          "content": { "Fn::Join" : ["", [
-                            "[cfn-auto-reloader-hook]\n",
-                            "triggers=post.update\n",
-                            "path=Resources.SharePointFoundation.Metadata.AWS::CloudFormation::Init\n",
-                            "action=cfn-init.exe -v -s ", { "Ref" : "AWS::StackId" },
-                                                          " -r SharePointFoundation",
-                                                          " --region ", { "Ref" : "AWS::Region" }, "\n"
-                          ]]}
-                        },
-                        "C:\\Users\\Administrator\\Downloads\\firstrun.ps1"    : {
-                            "content" : { "Fn::Join" : [ "", [
-                                "echo \"Installing web-webserver\"\n",
-                                "add-windowsfeature web-webserver -includeallsubfeature -logpath $env:temp\\webserver_addrole.log\n",
-                                "echo \"Installing web-mgmt-tools\"\n",
-                                "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
-                                "echo \"This is the first Windows IIS Server ",
-                                {"Ref" : "WindowsName"},
-                                "\" >> C:\\inetpub\\wwwroot\\index.html\n"
-                                ]]
-                            }
-                        }                        
-                    },
-                    "commands": {
-                        "b-configure": {
-                            "command": "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"
-                        }
-                    },
-                    "services": {
-                        "windows": {
-                            "cfn-hup": {
-                                "enabled": "true",
-                                "ensureRunning": "true",
-                                "files": [
-                                    "c:\\cfn\\cfn-hup.conf",
-                                    "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
+                "CidrBlock": "10.10.20.0/24",
+                "MapPublicIpOnLaunch": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Subnet-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
                                 ]
-                            }
+                            ]
                         }
                     }
+                ]
+            }
+        },
+        "StackInternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "InternetGateway-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "AttachGateway": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "StackInternetGateway"
                 }
             }
         },
-      "Properties": {
-        "InstanceType"   : { "Ref" : "WindowsInstanceType" },
-        "ImageId": { "Ref" : "WindowsAMI" },
-        "KeyName" : { "Ref" : "KeyName" },
-        "SubnetId" : { "Ref" : "StackSubnet"},
-        "SecurityGroupIds" : [ {"Fn::GetAtt" : [ "WindowsSecurityGroup", "GroupId" ]} ],
-        "UserData": {
-            "Fn::Base64": {
+        "ExternalRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ExternalRouteTable-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "ExternalRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ExternalRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "StackInternetGateway"
+                }
+            }
+        },
+        "ExternalSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "StackSubnet"
+                },
+                "RouteTableId": {
+                    "Ref": "ExternalRouteTable"
+                }
+            }
+        },
+        "BIGIPSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable HTTP and RDP",
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8443",
+                        "ToPort": "8443",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "WindowsSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable HTTP and RDP",
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "BIGIPInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "BigIP_Install": [
+                            "install_CloudLibs",
+                            "onBoard"
+                        ]
+                    },
+                    "install_CloudLibs": {
+                        "files": {
+                            "/config/cloud/aws/firstrun.utils": {
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root",
+                                "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
+                            },
+                            "/config/cloud/f5-cloud-libs.tar.gz": {
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root",
+                                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz"
+                            },
+                            "/config/cloud/aws/getNameServer.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "INTERFACE=$1",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
+                                            "VPC_NET=${VPC_CIDR_BLOCK%/*}",
+                                            "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
+                                            "echo $NAME_SERVER"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/createUser.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword",
+                                            "PASSWORD=`cat /config/cloud/aws/.adminPassword`",
+                                            "if [ \"$1\" = admin ]; then",
+                                            "    tmsh modify auth user \"$1\" password \"$2\"",
+                                            "else",
+                                            "    tmsh create auth user \"$1\" password \"$2\" shell bash partition-access replace-all-with { all-partitions { role admin } }",
+                                            "fi"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "001-unpack-libs": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "tar xvzf /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/;",
+                                            "mv /config/cloud/aws/F5Networks-f5-cloud-libs-* /config/cloud/aws/f5-cloud-libs;",
+                                            "cd /config/cloud/aws/f5-cloud-libs;",
+                                            "npm install --production;"
+                                        ]
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "onBoard": {
+                        "commands": {
+                            "002-1nic-setup": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            " --file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
+                                            " --cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
+                                            " -o /var/log/1nicSetup.log",
+                                            " --signal 1_NIC_SETUP_DONE",
+                                            "&> /var/log/cloudlibs-install.log < /dev/null",
+                                            "&"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "004-create-admin-user": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            " f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            " --wait-for 1_NIC_SETUP_DONE",
+                                            " --signal ADMIN_CREATED",
+                                            " --file /config/cloud/aws/createUser.sh",
+                                            " --cl-args '",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            " ",
+                                            {
+                                                "Ref" : "adminPassword"
+                                            },
+                                            "'",
+                                            " --log-level verbose",
+                                            " -o /var/log/createUser.log",
+                                            " &> /var/log/cloudlibs-install.log < /dev/null",
+                                            " &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "005-onboard-BIG-IP": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "NAME_SERVER=$(/config/cloud/aws/getNameServer.sh eth0);",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
+                                            " --ssl-port '8443'",
+                                            " --wait-for ADMIN_CREATED",
+                                            " --log-level verbose",
+                                            " -o  /var/log/onboard.log",
+                                            " --no-reboot",
+                                            " --host localhost",
+                                            " --user",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            " --password ",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            " --hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
+                                            " --ntp 0.us.pool.ntp.org",
+                                            " --ntp 1.us.pool.ntp.org",
+                                            " --tz UTC",
+                                            " --dns ${NAME_SERVER}",
+                                            " --module ltm:nominal",
+                                            "&> /var/log/cloudlibs-install.log < /dev/null",
+                                            "&"
+                                        ]
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "BIGIPInstanceType"
+                },
+                "ImageId": {
+                    "Ref": "BIGIPAMI"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "StackSubnet"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "BIGIPSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash\n",
+                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-init -v ",
+                                "       --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "       --resource BIGIPInstance",
+                                "       --configsets BigIP_Install ",
+                                "       --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal.exe -e $? ",
+                                "         --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "         --resource BIGIPInstance ",
+                                "         --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Timeout": "PT1H"
+                }
+            }
+        },
+        "WindowsInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "IIS_Install": [
+                            "install_IIS"
+                        ]
+                    },
+                    "install_IIS": {
+                        "files": {
+                            "c:\\cfn\\cfn-hup.conf": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[main]\n",
+                                            "stack=",
+                                            {
+                                                "Ref": "AWS::StackId"
+                                            },
+                                            "\n",
+                                            "region=",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[cfn-auto-reloader-hook]\n",
+                                            "triggers=post.update\n",
+                                            "path=Resources.SharePointFoundation.Metadata.AWS::CloudFormation::Init\n",
+                                            "action=cfn-init.exe -v -s ",
+                                            {
+                                                "Ref": "AWS::StackId"
+                                            },
+                                            " -r SharePointFoundation",
+                                            " --region ",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "echo \"Installing web-webserver\"\n",
+                                            "add-windowsfeature web-webserver -includeallsubfeature -logpath $env:temp\\webserver_addrole.log\n",
+                                            "echo \"Installing web-mgmt-tools\"\n",
+                                            "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
+                                            "echo \"This is the first Windows IIS Server ",
+                                            {
+                                                "Ref": "WindowsName"
+                                            },
+                                            "\" >> C:\\inetpub\\wwwroot\\index.html\n",
+                                            "$pass = ConvertTo-SecureString \"",
+                                            {
+                                                "Ref" : "adminPassword"
+                                            },
+                                            "\" -AsPlainText -Force\n",
+                                            "New-LocalUser -Name \"tstanley\" -Password $pass -PasswordNeverExpires\n",
+                                            "Add-LocalGroupMember -Group \"Administrators\" -Member \"",
+                                            {
+                                                "Ref" : "adminUsername"
+                                            },
+                                            "\"\n"
+                                        ]
+                                    ]
+                                }
+                            }
+                        },
+                        "commands": {
+                            "b-configure": {
+                                "command": "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"
+                            }
+                        },
+                        "services": {
+                            "windows": {
+                                "cfn-hup": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true",
+                                    "files": [
+                                        "c:\\cfn\\cfn-hup.conf",
+                                        "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "WindowsInstanceType"
+                },
+                "ImageId": {
+                    "Ref": "WindowsAMI"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "StackSubnet"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "WindowsSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "<script>\n",
+                                "cfn-init.exe -v ",
+                                "       --stack ",
+                                {
+                                    "Ref": "AWS::StackId"
+                                },
+                                "       --resource WindowsInstance",
+                                "       --configsets IIS_Install ",
+                                "       --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "cfn-signal.exe -e %ERRORLEVEL% ",
+                                "       --stack ",
+                                {
+                                    "Ref": "AWS::StackId"
+                                },
+                                "       --resource WindowsInstance",
+                                "       --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "</script>"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Timeout": "PT30M"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "ServerURL": {
+            "Description": "The AWS Generated URL.",
+            "Value": {
                 "Fn::Join": [
                     "",
                     [
-                        "cfn-init.exe -v ",
-                        "       --stack ", { "Ref": "AWS::StackId" },
-                        "       --resource WindowsInstance",
-                        "       --configsets IIS_Install ",
-                        "       --region ", { "Ref": "AWS::Region" },
-                        "\n",
-                        "cfn-signal.exe -e %ERRORLEVEL% ",
-                        "       --stack ", { "Ref": "AWS::StackId" },
-                        "       --resource WindowsInstance",
-                        "       --region ", { "Ref": "AWS::Region" }, 
-                        "\n"
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "WindowsInstance",
+                                "PublicDnsName"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        },
+        "BIGIPURL": {
+            "Description": "The BIG-IP MGMT URL.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Fn::GetAtt": [
+                                "BIGIPInstance",
+                                "PublicDnsName"
+                            ]
+                        },
+                        ":8443/"
                     ]
                 ]
             }
         }
-      },
-      "CreationPolicy": {
-        "ResourceSignal": {
-            "Timeout": "PT15M"
-        }
-      }
-    } 
-  },
-  
-  "Outputs" : {
-    "ServerURL" : {
-      "Description": "The AWS Generated URL.",
-      "Value" : { "Fn::Join" : [ "", [
-        "http://",
-        {"Fn::GetAtt": [ "WindowsInstance", "PublicDnsName" ]}
-        ]]}
-    },
-    "BIGIPURL" : {
-      "Description": "The BIG-IP MGMT URL.",
-      "Value" : { "Fn::Join" : [ "", [
-        "https://",
-        {"Fn::GetAtt": [ "BIGIPInstance", "PublicDnsName" ]},
-        ":8443/"
-        ]]}
     }
-  }  
 }
