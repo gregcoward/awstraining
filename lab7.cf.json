@@ -345,100 +345,38 @@
             "Type": "AWS::EC2::Instance",
             "Metadata": {
                 "AWS::CloudFormation::Init": {
-                    "configSets": {
-                        "BigIP_Install": [
-                            "install_CloudLibs",
-                            "onBoard"
-                        ]
-                    },
-                    "install_CloudLibs": {
-                        "files": {
-                            "/config/cloud/aws/firstrun.utils": {
-                                "group": "root",
-                                "mode": "000755",
-                                "owner": "root",
-                                "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
-                            },
-                            "/config/cloud/f5-cloud-libs.tar.gz": {
-                                "group": "root",
-                                "mode": "000755",
-                                "owner": "root",
-                                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz"
-                            },
-                            "/config/cloud/aws/getNameServer.sh": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "INTERFACE=$1",
-                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                            "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
-                                            "VPC_NET=${VPC_CIDR_BLOCK%/*}",
-                                            "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
-                                            "echo $NAME_SERVER"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
-                            },
-                            "/config/cloud/aws/createUser.sh": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "if [ \"$1\" = admin ]; then",
-                                            "    tmsh modify auth user \"$1\" password \"$2\"",
-                                            "else",
-                                            "    tmsh create auth user \"$1\" password \"$2\" shell bash partition-access replace-all-with { all-partitions { role admin } }",
-                                            "fi"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
-                            }
-                        },
+                    "config": {
                         "commands": {
-                            "001-unpack-libs": {
-                                "command": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "tar xvzf /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/;",
-                                            "mv /config/cloud/aws/F5Networks-f5-cloud-libs-* /config/cloud/aws/f5-cloud-libs;",
-                                            "cd /config/cloud/aws/f5-cloud-libs;",
-                                            "npm install --production;"
-                                        ]
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "onBoard": {
-                        "commands": {
-                            "002-1nic-setup": {
-                                "command": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
-                                            " --file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
-                                            " --cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
-                                            " -o /var/log/1nicSetup.log",
-                                            " --signal 1_NIC_SETUP_DONE"
-                                        ]
-                                    ]
-                                }
+                            "001-disable-1nicautoconfig": {
+                              "command": "/usr/bin/setdb provision.1nicautoconfig disable"
+                            },
+                            "002-install-libs": {
+                              "command": "nohup /config/installCloudLibs.sh &> /var/log/cloudlibs-install.log < /dev/null &"
+                            },
+                            "003-1nic-setup": {
+                              "command": {
+                                "Fn::Join": [
+                                  " ",
+                                  [
+                                    "nohup /config/waitThenRun.sh",
+                                    "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                    "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
+                                    "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
+                                    "-o /var/log/1nicSetup.log",
+                                    "--background",
+                                    "--signal 1_NIC_SETUP_DONE",
+                                    "&> /var/log/cloudlibs-install.log < /dev/null",
+                                    "&"
+                                  ]
+                                ]
+                              }
                             },
                             "004-create-admin-user": {
                                 "command": {
                                     "Fn::Join": [
                                         "",
                                         [
+                                            "nohup /config/waitThenRun.sh",
                                             " f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
                                             " --wait-for 1_NIC_SETUP_DONE",
                                             " --signal ADMIN_CREATED",
@@ -447,13 +385,12 @@
                                             {
                                                 "Ref": "adminUsername"
                                             },
-                                            " ",
-                                            {
-                                                "Ref" : "adminPassword"
-                                            },
                                             "'",
                                             " --log-level verbose",
-                                            " -o /var/log/createUser.log"
+                                            " -o /var/log/createUser.log",
+                                            " --background",
+                                            " &> /var/log/cloudlibs-install.log < /dev/null",
+                                            " &"
                                         ]
                                     ]
                                 }
@@ -463,33 +400,161 @@
                                     "Fn::Join": [
                                         " ",
                                         [
-                                            "NAME_SERVER=$(/config/cloud/aws/getNameServer.sh eth0);",
+                                            "NAME_SERVER=`/config/cloud/aws/getNameServer.sh eth0`;",
+                                            "nohup /config/waitThenRun.sh",
                                             "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
                                             "--ssl-port '8443'",
                                             "--wait-for ADMIN_CREATED",
                                             "--log-level verbose",
                                             "-o  /var/log/onboard.log",
+                                            "--background",
                                             "--no-reboot",
                                             "--host localhost",
-                                            "--user '",
+                                            "--user",
                                             {
                                                 "Ref": "adminUsername"
                                             },
-                                            "'",
-                                            " --password '",
+                                            "--password",
                                             {
-                                                "Ref": "adminPassword"
+                                                "Ref" : "adminPassword"
                                             },
-                                            "'",
-                                            "--hostname 'curl http://169.254.169.254/latest/meta-data/hostname'",
+                                            "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
                                             "--ntp 0.us.pool.ntp.org",
                                             "--ntp 1.us.pool.ntp.org",
                                             "--tz UTC",
                                             "--dns ${NAME_SERVER}",
-                                            "--module ltm:nominal"
+                                            "--module ltm:nominal",
+                                            "&> /var/log/cloudlibs-install.log < /dev/null",
+                                            "&"
                                         ]
                                     ]
                                 }
+                            }
+                        },
+                        "files": {
+                            "/config/waitThenRun.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash",
+                                            "while true; do echo waiting for cloud libs install to complete",
+                                            "    if [ -f /config/cloud/cloudLibsReady ]; then",
+                                            "        echo cloud libs installed",
+                                            "        break",
+                                            "    else",
+                                            "        sleep 10",
+                                            "    fi",
+                                            "done",
+                                            "\"$@\""
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/verifyHash": {
+                              "content": {
+                                "Fn::Join": [
+                                  "\n",
+                                  [
+                                    "cli script /Common/verifyHash {",
+                                    "    proc script::run {} {",
+                                    "        if {[catch {",
+                                    "            set file_path [lindex $tmsh::argv 1]",
+                                    "            set expected_hash 1059c36ee97d8912d5cfe1837e19b2088c3f477424c69bc733cac3dba285ac1c664bfb6fea692dc6916747470f1f3ff3c2ba1bf7d7342d8ff4250f240425418a",
+                                    "            set computed_hash [lindex [exec /usr/bin/openssl dgst -r -sha512 $file_path] 0]",
+                                    "            if { $expected_hash eq $computed_hash } {",
+                                    "                exit 0",
+                                    "            }",
+                                    "            tmsh::log err {Hash does not match}",
+                                    "            exit 1",
+                                    "        }]} {",
+                                    "            tmsh::log err {Unexpected error in verifyHash}",
+                                    "            exit 1",
+                                    "        }",
+                                    "    }",
+                                    "    script-signature mug5u4TOC+wptaobEMWKRtEYM6/c9KKwFMEG/7mfAE3UWqj1X1uNj9/3RgEvV5eKled4NvuDaxj8RjW2CffKuJJPMcRcbFJ/fMzlgm/ZqSWc++5WTGHLUBFuXJeJARVjCBRjrddOyCCBQbP9XEynewXkb1cOEn9jkawXSppbo4UG204wcE8VMWOggxy5un56ioM9vcFvWAiPH4Ur6T86Vsx859u0fpJRY2Ovm2sXcguXMZMds0sJZMuWJyIb84gcIRIAqMjqx+UQwGbeZTbsWbDvtrMD3m/cMs8IOc1CJvjI6ra6iApeyZJECzgTH6kPru74l7hxEk0rU4UfAcc3Fg==",
+                                    "}"
+                                  ]
+                                ]
+                              },
+                              "mode": "000755",
+                              "owner": "root",
+                              "group": "root"
+                            },
+                            "/config/installCloudLibs.sh": {
+                              "content": {
+                                "Fn::Join": [
+                                  "\n",
+                                  [
+                                    "#!/bin/bash",
+                                    "echo about to execute",
+                                    "echo expanding f5-cloud-libs.tar.gz",
+                                    "tar xvfz /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/",
+                                    "echo cloud libs install complete",
+                                    "touch /config/cloud/cloudLibsReady"
+                                  ]
+                                ]
+                              },
+                              "mode": "000755",
+                              "owner": "root",
+                              "group": "root"
+                            },
+                            "/config/cloud/aws/getNameServer.sh": {
+                              "content": {
+                                "Fn::Join": [
+                                  "\n",
+                                  [
+                                    "INTERFACE=$1",
+                                    "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                    "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                    "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
+                                    "VPC_NET=${VPC_CIDR_BLOCK%/*}",
+                                    "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
+                                    "echo $NAME_SERVER"
+                                  ]
+                                ]
+                              },
+                              "mode": "000755",
+                              "owner": "root",
+                              "group": "root"
+                            },
+                            "/config/cloud/aws/createUser.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword\n",
+                                            "PASSWORD=",
+                                            {
+                                                "Ref" : "adminPassword"
+                                            },
+                                            "\n",
+                                            "if [ \"$1\" = admin ]; then\n",
+                                            "    tmsh modify auth user \"$1\" password ${PASSWORD}\n",
+                                            "else\n",
+                                            "    tmsh create auth user \"$1\" password ${PASSWORD} shell bash partition-access replace-all-with { all-partitions { role admin } }\n",
+                                            "fi\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/firstrun.utils": {
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root",
+                                "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
+                            },
+                            "/config/cloud/f5-cloud-libs.tar.gz": {
+                              "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz",
+                              "mode": "000644",
+                              "owner": "root",
+                              "group": "root"
                             }
                         }
                     }
@@ -527,8 +592,7 @@
                                 {
                                     "Ref": "AWS::StackName"
                                 },
-                                "       --resource BIGIPInstance",
-                                "       --configsets BigIP_Install ",
+                                "       --resource BIGIPInstance",                                
                                 "       --region ",
                                 {
                                     "Ref": "AWS::Region"
@@ -567,48 +631,6 @@
                     },
                     "install_IIS": {
                         "files": {
-                            "c:\\cfn\\cfn-hup.conf": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[main]\n",
-                                            "stack=",
-                                            {
-                                                "Ref": "AWS::StackId"
-                                            },
-                                            "\n",
-                                            "region=",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "\n"
-                                        ]
-                                    ]
-                                }
-                            },
-                            "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[cfn-auto-reloader-hook]\n",
-                                            "triggers=post.update\n",
-                                            "path=Resources.SharePointFoundation.Metadata.AWS::CloudFormation::Init\n",
-                                            "action=cfn-init.exe -v -s ",
-                                            {
-                                                "Ref": "AWS::StackId"
-                                            },
-                                            " -r SharePointFoundation",
-                                            " --region ",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "\n"
-                                        ]
-                                    ]
-                                }
-                            },
                             "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
                                 "content": {
                                     "Fn::Join": [
@@ -642,18 +664,6 @@
                         "commands": {
                             "b-configure": {
                                 "command": "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"
-                            }
-                        },
-                        "services": {
-                            "windows": {
-                                "cfn-hup": {
-                                    "enabled": "true",
-                                    "ensureRunning": "true",
-                                    "files": [
-                                        "c:\\cfn\\cfn-hup.conf",
-                                        "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
-                                    ]
-                                }
                             }
                         }
                     }

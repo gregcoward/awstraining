@@ -11,7 +11,7 @@
                         "default" : "Basics"
                     },
                     "Parameters" : [
-                        "Name",
+                        "WindowsName",
                         "KeyName",
                         "adminUsername",
                         "adminPassword"
@@ -22,7 +22,7 @@
                         "default" : "Size"
                     },
                     "Parameters" : [
-                        "InstanceType"                
+                        "WindowsInstanceType"                
                     ]
                 },
                 {
@@ -30,7 +30,7 @@
                         "default" : "Settings"
                     },
                     "Parameters" : [
-                        "WindowsVersion"
+                        "WindowsAMI"
                     ]
                 }
             ],
@@ -45,7 +45,7 @@
       "Type" : "AWS::EC2::KeyPair::KeyName",
       "ConstraintDescription" : "Must be the name of an existing EC2 KeyPair."
     },
-    "Name": {
+    "WindowsName": {
       "Description" :"The name of the Windows Server.",
       "Type" : "String"
     },
@@ -62,7 +62,7 @@
       "MaxLength": "255",
       "MinLength": "1"
     },
-    "InstanceType" : {
+    "WindowsInstanceType" : {
       "Description" : "EC2 instance type",
       "Type" : "String",
       "Default" : "t2.small",
@@ -195,7 +195,7 @@
                                 "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
                                 "echo \"This is the first Windows IIS Server ",
                                 {
-                                  "Ref": "Name"
+                                  "Ref": "WindowsName"
                                 },
                                 "\" >> C:\\inetpub\\wwwroot\\index.html\n",
                                 "$pass = ConvertTo-SecureString \"",
@@ -229,7 +229,7 @@
                   }
         },
       "Properties": {
-        "InstanceType"   : { "Ref" : "InstanceType" },
+        "InstanceType"   : { "Ref" : "WindowsInstanceType" },
         "ImageId": { "Ref" : "WindowsAMI" },
         "KeyName" : { "Ref" : "KeyName" },
         "SubnetId" : { "Ref" : "StackSubnet"},
