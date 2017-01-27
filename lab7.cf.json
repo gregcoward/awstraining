@@ -62,7 +62,7 @@
             "Type": "String"
         },
         "BIGIPName": {
-            "Description": "The name of the Windows Server.",
+            "Description": "The name of the BIG-IP.",
             "Type": "String"
         },
         "WindowsInstanceType": {
@@ -561,24 +561,13 @@
                 }
             },
             "Properties": {
-                "InstanceType": {
-                    "Ref": "BIGIPInstanceType"
-                },
-                "ImageId": {
-                    "Ref": "BIGIPAMI"
-                },
-                "KeyName": {
-                    "Ref": "KeyName"
-                },
-                "SubnetId": {
-                    "Ref": "StackSubnet"
-                },
+                "InstanceType": { "Ref": "BIGIPInstanceType" },
+                "ImageId": { "Ref": "BIGIPAMI" },
+                "KeyName": { "Ref": "KeyName" },
+                "SubnetId": { "Ref": "StackSubnet" },
                 "SecurityGroupIds": [
                     {
-                        "Fn::GetAtt": [
-                            "BIGIPSecurityGroup",
-                            "GroupId"
-                        ]
+                        "Fn::GetAtt": [ "BIGIPSecurityGroup", "GroupId" ]
                     }
                 ],
                 "UserData": {
@@ -598,7 +587,7 @@
                                     "Ref": "AWS::Region"
                                 },
                                 "\n",
-                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal.exe -e $? ",
+                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? ",
                                 "         --stack ",
                                 {
                                     "Ref": "AWS::StackName"
