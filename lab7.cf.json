@@ -387,10 +387,8 @@
                             "/config/cloud/aws/createUser.sh": {
                                 "content": {
                                     "Fn::Join": [
-                                        "\n",
+                                        "",
                                         [
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword",
-                                            "PASSWORD=`cat /config/cloud/aws/.adminPassword`",
                                             "if [ \"$1\" = admin ]; then",
                                             "    tmsh modify auth user \"$1\" password \"$2\"",
                                             "else",
@@ -431,9 +429,7 @@
                                             " --file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
                                             " --cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
                                             " -o /var/log/1nicSetup.log",
-                                            " --signal 1_NIC_SETUP_DONE",
-                                            "&> /var/log/cloudlibs-install.log < /dev/null",
-                                            "&"
+                                            " --signal 1_NIC_SETUP_DONE"
                                         ]
                                     ]
                                 }
@@ -457,9 +453,7 @@
                                             },
                                             "'",
                                             " --log-level verbose",
-                                            " -o /var/log/createUser.log",
-                                            " &> /var/log/cloudlibs-install.log < /dev/null",
-                                            " &"
+                                            " -o /var/log/createUser.log"
                                         ]
                                     ]
                                 }
@@ -471,28 +465,28 @@
                                         [
                                             "NAME_SERVER=$(/config/cloud/aws/getNameServer.sh eth0);",
                                             "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
-                                            " --ssl-port '8443'",
-                                            " --wait-for ADMIN_CREATED",
-                                            " --log-level verbose",
-                                            " -o  /var/log/onboard.log",
-                                            " --no-reboot",
-                                            " --host localhost",
-                                            " --user",
+                                            "--ssl-port '8443'",
+                                            "--wait-for ADMIN_CREATED",
+                                            "--log-level verbose",
+                                            "-o  /var/log/onboard.log",
+                                            "--no-reboot",
+                                            "--host localhost",
+                                            "--user '",
                                             {
                                                 "Ref": "adminUsername"
                                             },
-                                            " --password ",
+                                            "'",
+                                            " --password '",
                                             {
                                                 "Ref": "adminPassword"
                                             },
-                                            " --hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
-                                            " --ntp 0.us.pool.ntp.org",
-                                            " --ntp 1.us.pool.ntp.org",
-                                            " --tz UTC",
-                                            " --dns ${NAME_SERVER}",
-                                            " --module ltm:nominal",
-                                            "&> /var/log/cloudlibs-install.log < /dev/null",
-                                            "&"
+                                            "'",
+                                            "--hostname 'curl http://169.254.169.254/latest/meta-data/hostname'",
+                                            "--ntp 0.us.pool.ntp.org",
+                                            "--ntp 1.us.pool.ntp.org",
+                                            "--tz UTC",
+                                            "--dns ${NAME_SERVER}",
+                                            "--module ltm:nominal"
                                         ]
                                     ]
                                 }
