@@ -360,7 +360,6 @@
                   "Ref": "AWS::StackId"
                 },
                 "       --resource WindowsInstance",
-                "       --configsets IIS_Install ",
                 "       --region ",
                 {
                   "Ref": "AWS::Region"
