@@ -1,0 +1,75 @@
+description: >
+  This heat template demonstrates a basic load-balancing scenario on an F5® Device.
+heat_template_version: 2015-04-30
+
+parameters:
+  server_image:
+    description: Image to serve as server image
+    label: Server Glance Image
+    type: string
+    constraints:
+      - custom_constraint: glance.image
+  server_flavor:
+    description: Flavor of server image
+    label: Server Nova Flavor
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+  key_name:
+    description: The public key to be pushed to instances
+    label: Key Name
+    type: string
+    constraints:
+      - custom_constraint: nova.keypair
+  server_sec_group:
+    description: Security group for server
+    label: Security Group
+    type: string
+  server_network:
+    description: Network for server traffic
+    label: Server Network
+    type: string
+    constraints:
+      - custom_constraint: neutron.network
+  bigip_un:
+    description: BigIP Username
+    label: BigIP Login Username
+    type: string
+    default: admin
+  bigip_pw:
+    description: BigIP Password
+    label: BigIP Login Password
+    type: string
+    hidden: True
+
+parameter_groups:
+  - label: Server Parameters
+    parameters:
+      - server_image
+      - server_flavor
+      - key_name
+      - bigip_un
+      - bigip_pw
+  - label: Network Parameters
+    parameters:
+      - server_sec_group
+      - server_network
+
+resources:
+  server_data_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: server_network }
+      security_groups:
+        - { get_param: server_sec_group } 
+  server:
+    type: OS::Nova::Server
+    metadata:
+      
+    properties:
+      name: server
+      image: { get_param: server_image }
+      flavor: { get_param: server_flavor }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: server_data_port }
