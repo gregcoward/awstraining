@@ -1,0 +1,120 @@
+"onBoard": {
+    "commands": {
+        "002-1nic-setup": {
+            "command": {
+                "Fn::Join": [
+                    " ",
+                    [
+                        "nohup /config/waitThenRun.sh ;",
+                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                        "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
+                        "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws -o /var/log/1nicSetup.log ;",
+                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                        "--file /config/cloud/aws/createUser.sh",
+                        "--cl-args '",
+                        { "Ref" : "adminUsername"},
+                        { "Ref" : "adminPassword"},
+                        "'",
+                        "--log-level verbose -o /var/log/createUser.log ;",
+                        "NAME_SERVER=$(/config/cloud/aws/getNameServer.sh eth0) ;",
+                        "nohup /config/waitThenRun.sh ;",
+                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
+                        "--ssl-port '8443'",
+                        "--log-level verbose -o  /var/log/onboard.log",
+                        "--no-reboot",
+                        "--host localhost",
+                        "--user '",
+                        { "Ref" : "adminUsername"}
+                        "'",
+                        "--password '",
+                        { "Ref" : "adminPassword"}
+                        "'",
+                        "--hostname 'curl http://169.254.169.254/latest/meta-data/hostname'",
+                        "--ntp 0.us.pool.ntp.org",
+                        "--ntp 1.us.pool.ntp.org",
+                        "--tz UTC",
+                        "--dns ${NAME_SERVER}",
+                        "--module ltm:nominal"
+                    ]
+                ]
+            }
+        },
+        "004-create-admin-user": {
+            "command": {
+                "Fn::Join": [
+                    " ",
+                    [
+                        "nohup /config/waitThenRun.sh;",
+                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                        "--wait-for 1_NIC_SETUP_DONE",
+                        "--signal ADMIN_CREATED",
+                        "--file /config/cloud/aws/createUser.sh",
+                        "--cl-args '",
+                        {
+                            "Ref": "adminUsername"
+                        },
+                        {
+                            "Ref": "adminPassword"
+                        },
+                        "'",
+                        "--log-level verbose",
+                        "-o /var/log/createUser.log"
+                    ]
+                ]
+            }
+        },
+        "005-onboard-BIG-IP": {
+            "command": {
+                "Fn::Join": [
+                    " ",
+                    [
+                        "NAME_SERVER=$(/config/cloud/aws/getNameServer.sh eth0);",
+                        "nohup /config/waitThenRun.sh",
+                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
+                        "--ssl-port '8443'",
+                        "--wait-for ADMIN_CREATED",
+                        "--log-level verbose",
+                        "-o  /var/log/onboard.log",
+                        "--no-reboot",
+                        "--host localhost",
+                        "--user '",
+                        {
+                            "Ref": "adminUsername"
+                        },
+                        "'",
+                        "--password '",
+                        {
+                            "Ref": "adminPassword"
+                        },
+                        "'",
+                        "--hostname 'curl http://169.254.169.254/latest/meta-data/hostname'",
+                        "--ntp 0.us.pool.ntp.org",
+                        "--ntp 1.us.pool.ntp.org",
+                        "--tz UTC",
+                        "--dns ${NAME_SERVER}",
+                        "--module ltm:nominal"
+                    ]
+                ]
+            }
+        }
+    }
+}
+
+"       --configsets BigIP_Install ",
+"/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? ",
+{
+    "Ref": "BIGIPInstanceWaitHandle"
+},
+"\n""BIGIPInstanceWaitHandle": {
+    "Type": "AWS::CloudFormation::WaitConditionHandle"
+},
+"BIGIPInstanceWaitCondition": {
+    "Type": "AWS::CloudFormation::WaitCondition",
+    "DependsOn": "BIGIPInstance",
+    "Properties": {
+        "Handle": {
+            "Ref": "BIGIPInstanceWaitHandle"
+        },
+        "Timeout": "3600"
+    }
+},
