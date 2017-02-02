@@ -345,115 +345,31 @@
             "Type": "AWS::EC2::Instance",
             "Metadata": {
                 "AWS::CloudFormation::Init": {
-                    "config": {
+                    "configSets": {
+                        "BIGIPConfig": [
+                            "disable1nic",
+                            "install-cloud-libs",
+                            "1nic-setup",
+                            "create-admin-user",
+                            "onboard-bigip"
+                        ]
+                    },
+                    "disable1nic": {
                         "commands": {
                             "001-disable-1nicautoconfig": {
                                 "command": "/usr/bin/setdb provision.1nicautoconfig disable"
-                            },
+                            }                                                                                  
+                        },
+                        "files": {}
+                    },
+
+                    "install-cloud-libs": {
+                        "commands": {
                             "002-install-libs": {
                                 "command": "nohup /config/installCloudLibs.sh &> /var/log/cloudlibs-install.log < /dev/null &"
-                            },
-                            "003-1nic-setup": {
-                                "command": {
-                                    "Fn::Join": [
-                                        " ",
-                                        [
-                                            "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
-                                            "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
-                                            "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
-                                            "-o /var/log/1nicSetup.log",
-                                            "--background",
-                                            "--signal 1_NIC_SETUP_DONE",
-                                            "&> /var/log/cloudlibs-install.log < /dev/null",
-                                            "&"
-                                        ]
-                                    ]
-                                }
-                            },
-                            "004-create-admin-user": {
-                                "command": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "nohup /config/waitThenRun.sh",
-                                            " f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
-                                            " --wait-for 1_NIC_SETUP_DONE",
-                                            " --signal ADMIN_CREATED",
-                                            " --file /config/cloud/aws/createUser.sh",
-                                            " --cl-args '",
-                                            {
-                                                "Ref": "adminUsername"
-                                            },
-                                            "'",
-                                            " --log-level verbose",
-                                            " -o /var/log/createUser.log",
-                                            " --background",
-                                            " &> /var/log/cloudlibs-install.log < /dev/null",
-                                            " &"
-                                        ]
-                                    ]
-                                }
-                            },
-                            "005-onboard-BIG-IP": {
-                                "command": {
-                                    "Fn::Join": [
-                                        " ",
-                                        [
-                                            "NAME_SERVER=`/config/cloud/aws/getNameServer.sh eth0`;",
-                                            "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
-                                            "--ssl-port '8443'",
-                                            "--wait-for ADMIN_CREATED",
-                                            "--log-level verbose",
-                                            "-o  /var/log/onboard.log",
-                                            "--background",
-                                            "--no-reboot",
-                                            "--host localhost",
-                                            "--user",
-                                            {
-                                                "Ref": "adminUsername"
-                                            },
-                                            "--password",
-                                            {
-                                                "Ref": "adminPassword"
-                                            },
-                                            "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
-                                            "--ntp 0.us.pool.ntp.org",
-                                            "--ntp 1.us.pool.ntp.org",
-                                            "--tz UTC",
-                                            "--dns ${NAME_SERVER}",
-                                            "--module ltm:nominal",
-                                            "&> /var/log/cloudlibs-install.log < /dev/null",
-                                            "&"
-                                        ]
-                                    ]
-                                }
                             }
                         },
                         "files": {
-                            "/config/waitThenRun.sh": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "\n",
-                                        [
-                                            "#!/bin/bash",
-                                            "while true; do echo waiting for cloud libs install to complete",
-                                            "    if [ -f /config/cloud/cloudLibsReady ]; then",
-                                            "        echo cloud libs installed",
-                                            "        break",
-                                            "    else",
-                                            "        sleep 10",
-                                            "    fi",
-                                            "done",
-                                            "\"$@\""
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
-                            },
                             "/config/verifyHash": {
                                 "content": {
                                     "Fn::Join": [
@@ -502,25 +418,68 @@
                                 "owner": "root",
                                 "group": "root"
                             },
-                            "/config/cloud/aws/getNameServer.sh": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "\n",
-                                        [
-                                            "INTERFACE=$1",
-                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                            "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
-                                            "VPC_NET=${VPC_CIDR_BLOCK%/*}",
-                                            "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
-                                            "echo $NAME_SERVER"
-                                        ]
-                                    ]
-                                },
+                            "/config/cloud/aws/firstrun.utils": {
+                                "group": "root",
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
                             },
+                            "/config/cloud/f5-cloud-libs.tar.gz": {
+                                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz",
+                                "mode": "000644",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        }
+
+                    },
+
+                    "1nic-setup": {
+                        "commands": {
+                            "003-1nic-setup": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
+                                            "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
+                                            "-o /var/log/1nicSetup.log",
+                                            "&> /var/log/cloudlibs-install.log < /dev/null",
+                                            "&"
+                                        ]
+                                    ]
+                                }
+                            }
+                        },
+                        "files": {}
+
+                    },
+
+                    "create-admin-user": {
+                        "commands": {
+                            "004-create-admin-user": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            " f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            " --file /config/cloud/aws/createUser.sh",
+                                            " --cl-args '",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            "'",
+                                            " --log-level verbose",
+                                            " -o /var/log/createUser.log",
+                                            " &> /var/log/cloudlibs-install.log < /dev/null",
+                                            " &"
+                                        ]
+                                    ]
+                                }
+                            }
+                        },
+                        "files": {
                             "/config/cloud/aws/createUser.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -543,20 +502,68 @@
                                 "mode": "000755",
                                 "owner": "root",
                                 "group": "root"
-                            },
-                            "/config/cloud/aws/firstrun.utils": {
-                                "group": "root",
+                            }
+                        }
+                        
+                    },
+
+                    "onboard-bigip": {
+                        "commands": {
+                            "005-onboard-BIG-IP": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "NAME_SERVER=`/config/cloud/aws/getNameServer.sh eth0`;",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
+                                            "--ssl-port '8443'",
+                                            "--log-level verbose",
+                                            "-o  /var/log/onboard.log",
+                                            "--no-reboot",
+                                            "--host localhost",
+                                            "--user",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            "--password",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
+                                            "--ntp 0.us.pool.ntp.org",
+                                            "--ntp 1.us.pool.ntp.org",
+                                            "--tz UTC",
+                                            "--dns ${NAME_SERVER}",
+                                            "--module ltm:nominal",
+                                            "&> /var/log/cloudlibs-install.log < /dev/null",
+                                            "&"
+                                        ]
+                                    ]
+                                }
+                            }
+                        },
+                        "files": {
+                            "/config/cloud/aws/getNameServer.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "INTERFACE=$1",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
+                                            "VPC_NET=${VPC_CIDR_BLOCK%/*}",
+                                            "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
+                                            "echo $NAME_SERVER"
+                                        ]
+                                    ]
+                                },
                                 "mode": "000755",
-                                "owner": "root",
-                                "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
-                            },
-                            "/config/cloud/f5-cloud-libs.tar.gz": {
-                                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz",
-                                "mode": "000644",
                                 "owner": "root",
                                 "group": "root"
                             }
                         }
+
                     }
                 }
             },
@@ -588,15 +595,22 @@
                             [
                                 "#!/bin/bash\n",
                                 "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-init -v ",
-                                "       --stack ",
+                                " --stack ",
                                 {
                                     "Ref": "AWS::StackName"
                                 },
-                                "       --resource BIGIPInstance",
-                                "       --region ",
+                                " --resource BIGIPInstance",
+                                " --region ",
                                 {
                                     "Ref": "AWS::Region"
                                 },
+                                "\n",
+                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? ",
+                                "'",
+                                {
+                                    "Ref" : "BIGIPWaitHandle"
+                                },
+                                "'",
                                 "\n"
                             ]
                         ]
@@ -604,6 +618,23 @@
                 }
             }
         },
+
+        "BIGIPWaitCondition": {
+            "Type": "AWS::CloudFormation::WaitCondition",
+            "DependsOn": "BIGIPInstance",
+            "Properties": {
+                "Handle": {
+                    "Ref": "BIGIPWaitHandle"
+                },
+                "Timeout": "3600"
+            }
+        },
+
+        "BIGIPWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle",
+            "Properties": {}
+        },
+
         "WindowsInstance": {
             "Type": "AWS::EC2::Instance",
             "Metadata": {
@@ -681,26 +712,22 @@
                             [
                                 "<script>\n",
                                 "cfn-init.exe -v ",
-                                "       --stack ",
+                                " --stack ",
                                 {
                                     "Ref": "AWS::StackId"
                                 },
-                                "       --resource WindowsInstance",
-                                "       --configsets IIS_Install ",
-                                "       --region ",
+                                " --resource WindowsInstance",
+                                " --configsets IIS_Install ",
+                                " --region ",
                                 {
                                     "Ref": "AWS::Region"
                                 },
                                 "\n",
                                 "cfn-signal.exe -e %ERRORLEVEL% ",
-                                "       --stack ",
                                 {
-                                    "Ref": "AWS::StackId"
-                                },
-                                "       --resource WindowsInstance",
-                                "       --region ",
-                                {
-                                    "Ref": "AWS::Region"
+                                    "Fn::Base64": {
+                                        "Ref": "WindowsInstanceWaitHandle"
+                                    }
                                 },
                                 "\n",
                                 "</script>"
@@ -708,11 +735,21 @@
                         ]
                     }
                 }
-            },
-            "CreationPolicy": {
-                "ResourceSignal": {
-                    "Timeout": "PT30M"
-                }
+            }
+        },
+
+        "WindowsInstanceWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        },
+        
+        "WindowsInstanceWaitCondition": {
+            "Type": "AWS::CloudFormation::WaitCondition",
+            "DependsOn": "WindowsInstance",
+            "Properties": {
+                "Handle": {
+                    "Ref": "WindowsInstanceWaitHandle"
+                },
+                "Timeout": "3600"
             }
         }
     },

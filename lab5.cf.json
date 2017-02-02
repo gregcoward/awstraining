@@ -143,6 +143,7 @@
         ]
       }
     },
+
     "StackSubnet": {
       "Type": "AWS::EC2::Subnet",
       "Properties": {
@@ -169,6 +170,7 @@
         ]
       }
     },
+
     "StackInternetGateway": {
       "Type": "AWS::EC2::InternetGateway",
       "Properties": {
@@ -190,6 +192,7 @@
         ]
       }
     },
+
     "AttachGateway": {
       "Type": "AWS::EC2::VPCGatewayAttachment",
       "Properties": {
@@ -201,6 +204,7 @@
         }
       }
     },
+
     "ExternalRouteTable": {
       "Type": "AWS::EC2::RouteTable",
       "Properties": {
@@ -225,6 +229,7 @@
         ]
       }
     },
+
     "ExternalRoute": {
       "Type": "AWS::EC2::Route",
       "Properties": {
@@ -237,6 +242,7 @@
         }
       }
     },
+
     "ExternalSubnetRouteTableAssociation": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
@@ -248,6 +254,7 @@
         }
       }
     },
+
     "WindowsSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
@@ -271,11 +278,17 @@
         ]
       }
     },
+    
     "WindowsInstance": {
       "Type": "AWS::EC2::Instance",
       "Metadata": {
         "AWS::CloudFormation::Init": {
-          "config": {
+          "configSets": {
+            "IIS_Install": [
+              "install_IIS"
+            ]
+          },
+          "install_IIS": {
             "files": {
               "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
                 "content": {
@@ -313,18 +326,6 @@
               }
             }
           }
-        },
-        "services": {
-          "windows": {
-            "cfn-hup": {
-              "enabled": "true",
-              "ensureRunning": "true",
-              "files": [
-                "c:\\cfn\\cfn-hup.conf",
-                "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
-              ]
-            }
-          }
         }
       },
       "Properties": {
@@ -355,25 +356,22 @@
               [
                 "<script>\n",
                 "cfn-init.exe -v ",
-                "       --stack ",
+                " --stack ",
                 {
                   "Ref": "AWS::StackId"
                 },
-                "       --resource WindowsInstance",
-                "       --region ",
+                " --resource WindowsInstance",
+                " --configsets IIS_Install ",
+                " --region ",
                 {
                   "Ref": "AWS::Region"
                 },
                 "\n",
                 "cfn-signal.exe -e %ERRORLEVEL% ",
-                "       --stack ",
                 {
-                  "Ref": "AWS::StackId"
-                },
-                "       --resource WindowsInstance",
-                "       --region ",
-                {
-                  "Ref": "AWS::Region"
+                  "Fn::Base64": {
+                    "Ref": "WindowsInstanceWaitHandle"
+                  }
                 },
                 "\n",
                 "</script>"
@@ -381,11 +379,20 @@
             ]
           }
         }
-      },
-      "CreationPolicy": {
-        "ResourceSignal": {
-          "Timeout": "PT30M"
-        }
+      }
+    },
+
+    "WindowsInstanceWaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "WindowsInstanceWaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "WindowsInstance",
+      "Properties": {
+        "Handle": {
+          "Ref": "WindowsInstanceWaitHandle"
+        },
+        "Timeout": "3600"
       }
     }
   },
