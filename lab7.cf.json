@@ -740,13 +740,6 @@
                                 {
                                     "Ref": "AWS::Region"
                                 },
-                                "\n",
-                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? ",
-                                "'",
-                                {
-                                    "Ref" : "BIGIPWaitHandle"
-                                },
-                                "'",
                                 "\n"
                             ]
                         ]
