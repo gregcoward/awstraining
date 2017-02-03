@@ -185,6 +185,17 @@
                 "VpcId": {
                     "Ref": "StackVPC"
                 },
+                "AvailabilityZone": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            "a"
+                        ]
+                    ]
+                },
                 "CidrBlock": "10.10.20.0/24",
                 "MapPublicIpOnLaunch": true,
                 "Tags": [
@@ -211,6 +222,17 @@
             "Properties": {
                 "VpcId": {
                     "Ref": "StackVPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            "b"
+                        ]
+                    ]
                 },
                 "CidrBlock": "10.10.30.0/24",
                 "MapPublicIpOnLaunch": false,
