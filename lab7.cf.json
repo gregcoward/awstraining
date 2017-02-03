@@ -179,7 +179,7 @@
             }
         },
 
-        "StackSubnet": {
+        "ExternalSubnet": {
             "Type": "AWS::EC2::Subnet",
             "Properties": {
                 "VpcId": {
@@ -194,7 +194,34 @@
                             "Fn::Join": [
                                 "",
                                 [
-                                    "Subnet-",
+                                    "ExternalSubnet-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "ServerSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "CidrBlock": "10.10.30.0/24",
+                "MapPublicIpOnLaunch": false,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ServerSubnet-",
                                     {
                                         "Ref": "AWS::StackName"
                                     }
@@ -282,10 +309,60 @@
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Properties": {
                 "SubnetId": {
-                    "Ref": "StackSubnet"
+                    "Ref": "ExternalSubnet"
                 },
                 "RouteTableId": {
                     "Ref": "ExternalRouteTable"
+                }
+            }
+        },
+
+        "ServerRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ServerRouteTable-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "ServerRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ServerRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "InstanceId": {
+                    "Ref": "BIGIPInstance"
+                }
+            }
+        },
+
+        "ServerSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "ServerSubnet"
+                },
+                "RouteTableId": {
+                    "Ref": "ServerRouteTable"
                 }
             }
         },
@@ -338,13 +415,13 @@
                         "IpProtocol": "tcp",
                         "FromPort": "80",
                         "ToPort": "80",
-                        "CidrIp": "0.0.0.0/0"
+                        "CidrIp": "10.10.20.0/24"
                     },
                     {
                         "IpProtocol": "tcp",
                         "FromPort": "3389",
                         "ToPort": "3389",
-                        "CidrIp": "0.0.0.0/0"
+                        "CidrIp": "10.10.20.0/24"
                     }
                 ]
             }
@@ -366,8 +443,16 @@
                     "001-disable1nic": {
                         "commands": {
                             "001-disable-1nicautoconfig": {
-                                "command": "/usr/bin/setdb provision.1nicautoconfig disable"
-                            }                                                                                  
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "/usr/bin/setdb provision.1nicautoconfig disable; ",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",{ "Ref": "BIGIPWaitHandle" },"'"
+                                        ]
+                                    ]
+                                }
+                            }
                         },
                         "files": {}
                     },
@@ -375,7 +460,15 @@
                     "002-install-cloud-libs": {
                         "commands": {
                             "002-install-libs": {
-                                "command": "nohup /config/installCloudLibs.sh &> /var/log/cloudlibs-install.log < /dev/null &"
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "nohup /config/installCloudLibs.sh &> /var/log/cloudlibs-install.log < /dev/null &; ",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",{ "Ref" : "BIGIPWaitHandle" },"'"
+                                        ]
+                                    ]
+                                }
                             }
                         },
                         "files": {
@@ -448,16 +541,17 @@
                             "003-1nic-setup": {
                                 "command": {
                                     "Fn::Join": [
-                                        " ",
+                                        "",
                                         [
-                                            "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
-                                            "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
-                                            "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
-                                            "-o /var/log/1nicSetup.log",
-                                            "--signal 1_NIC_SETUP_DONE",
-                                            "&> /var/log/cloudlibs-install.log < /dev/null",
-                                            "&"
+                                            "nohup /config/waitThenRun.sh; ",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js ",
+                                            "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh ",
+                                            "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws ",
+                                            "-o /var/log/1nicSetup.log ",
+                                            "--signal 1_NIC_SETUP_DONE ",
+                                            "&> /var/log/cloudlibs-install.log < /dev/null ",
+                                            "&; ",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",{ "Ref" : "BIGIPWaitHandle" },"'"
                                         ]
                                     ]
                                 }
@@ -497,7 +591,7 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "nohup /config/waitThenRun.sh",
+                                            "nohup /config/waitThenRun.sh; ",
                                             " f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
                                             " --file /config/cloud/aws/createUser.sh",
                                             " --cl-args '",
@@ -510,7 +604,8 @@
                                             " --log-level verbose",
                                             " -o /var/log/createUser.log",
                                             " &> /var/log/cloudlibs-install.log < /dev/null",
-                                            " &"
+                                            " &; ",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",{ "Ref" : "BIGIPWaitHandle" },"'"
                                         ]
                                     ]
                                 }
@@ -552,7 +647,7 @@
                                         " ",
                                         [
                                             "NAME_SERVER=`/config/cloud/aws/getNameServer.sh eth0`;",
-                                            "nohup /config/waitThenRun.sh",
+                                            "nohup /config/waitThenRun.sh;",
                                             "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
                                             "--ssl-port '8443'",
                                             "--log-level verbose",
@@ -575,7 +670,8 @@
                                             "--dns ${NAME_SERVER}",
                                             "--module ltm:nominal",
                                             "&> /var/log/cloudlibs-install.log < /dev/null",
-                                            "&"
+                                            "&;",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",{ "Ref" : "BIGIPWaitHandle" },"'"
                                         ]
                                     ]
                                 }
@@ -617,7 +713,7 @@
                     "Ref": "KeyName"
                 },
                 "SubnetId": {
-                    "Ref": "StackSubnet"
+                    "Ref": "ExternalSubnet"
                 },
                 "SecurityGroupIds": [
                     {
@@ -666,6 +762,7 @@
                 "Handle": {
                     "Ref": "BIGIPWaitHandle"
                 },
+                "Count": "5",
                 "Timeout": "3600"
             }
         },
@@ -735,7 +832,7 @@
                     "Ref": "KeyName"
                 },
                 "SubnetId": {
-                    "Ref": "StackSubnet"
+                    "Ref": "ServerSubnet"
                 },
                 "SecurityGroupIds": [
                     {
