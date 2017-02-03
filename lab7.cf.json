@@ -178,6 +178,7 @@
                 ]
             }
         },
+
         "StackSubnet": {
             "Type": "AWS::EC2::Subnet",
             "Properties": {
@@ -204,6 +205,7 @@
                 ]
             }
         },
+
         "StackInternetGateway": {
             "Type": "AWS::EC2::InternetGateway",
             "Properties": {
@@ -225,6 +227,7 @@
                 ]
             }
         },
+
         "AttachGateway": {
             "Type": "AWS::EC2::VPCGatewayAttachment",
             "Properties": {
@@ -236,6 +239,7 @@
                 }
             }
         },
+
         "ExternalRouteTable": {
             "Type": "AWS::EC2::RouteTable",
             "Properties": {
@@ -260,6 +264,7 @@
                 ]
             }
         },
+
         "ExternalRoute": {
             "Type": "AWS::EC2::Route",
             "Properties": {
@@ -272,6 +277,7 @@
                 }
             }
         },
+
         "ExternalSubnetRouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Properties": {
@@ -283,6 +289,7 @@
                 }
             }
         },
+
         "BIGIPSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -318,6 +325,7 @@
                 ]
             }
         },
+
         "WindowsSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -341,20 +349,21 @@
                 ]
             }
         },
+
         "BIGIPInstance": {
             "Type": "AWS::EC2::Instance",
             "Metadata": {
                 "AWS::CloudFormation::Init": {
                     "configSets": {
                         "BIGIPConfig": [
-                            "disable1nic",
-                            "install-cloud-libs",
-                            "1nic-setup",
-                            "create-admin-user",
-                            "onboard-bigip"
+                            "001-disable1nic",
+                            "002-install-cloud-libs",
+                            "003-1nic-setup",
+                            "004-create-admin-user",
+                            "005-onboard-bigip"
                         ]
                     },
-                    "disable1nic": {
+                    "001-disable1nic": {
                         "commands": {
                             "001-disable-1nicautoconfig": {
                                 "command": "/usr/bin/setdb provision.1nicautoconfig disable"
@@ -363,7 +372,7 @@
                         "files": {}
                     },
 
-                    "install-cloud-libs": {
+                    "002-install-cloud-libs": {
                         "commands": {
                             "002-install-libs": {
                                 "command": "nohup /config/installCloudLibs.sh &> /var/log/cloudlibs-install.log < /dev/null &"
@@ -434,17 +443,19 @@
 
                     },
 
-                    "1nic-setup": {
+                    "003-1nic-setup": {
                         "commands": {
                             "003-1nic-setup": {
                                 "command": {
                                     "Fn::Join": [
                                         " ",
                                         [
+                                            "nohup /config/waitThenRun.sh",
                                             "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
                                             "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
                                             "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
                                             "-o /var/log/1nicSetup.log",
+                                            "--signal 1_NIC_SETUP_DONE",
                                             "&> /var/log/cloudlibs-install.log < /dev/null",
                                             "&"
                                         ]
@@ -452,17 +463,41 @@
                                 }
                             }
                         },
-                        "files": {}
+                        "files": {
+                            "/config/waitThenRun.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash",
+                                            "while true; do echo waiting for cloud libs install to complete",
+                                            "    if [ -f /config/cloud/cloudLibsReady ]; then",
+                                            "        echo cloud libs installed",
+                                            "        break",
+                                            "    else",
+                                            "        sleep 10",
+                                            "    fi",
+                                            "done",
+                                            "\"$@\""
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        }
 
                     },
 
-                    "create-admin-user": {
+                    "004-create-admin-user": {
                         "commands": {
                             "004-create-admin-user": {
                                 "command": {
                                     "Fn::Join": [
                                         "",
                                         [
+                                            "nohup /config/waitThenRun.sh",
                                             " f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
                                             " --file /config/cloud/aws/createUser.sh",
                                             " --cl-args '",
@@ -470,6 +505,8 @@
                                                 "Ref": "adminUsername"
                                             },
                                             "'",
+                                            " --signal CREATEUSER_DONE",
+                                            " --wait-for 1_NIC_SETUP_DONE",
                                             " --log-level verbose",
                                             " -o /var/log/createUser.log",
                                             " &> /var/log/cloudlibs-install.log < /dev/null",
@@ -507,7 +544,7 @@
                         
                     },
 
-                    "onboard-bigip": {
+                    "005-onboard-bigip": {
                         "commands": {
                             "005-onboard-BIG-IP": {
                                 "command": {
@@ -515,11 +552,13 @@
                                         " ",
                                         [
                                             "NAME_SERVER=`/config/cloud/aws/getNameServer.sh eth0`;",
+                                            "nohup /config/waitThenRun.sh",
                                             "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
                                             "--ssl-port '8443'",
                                             "--log-level verbose",
                                             "-o  /var/log/onboard.log",
                                             "--no-reboot",
+                                            "--signal CREATEUSER_DONE",
                                             "--host localhost",
                                             "--user",
                                             {
@@ -599,6 +638,7 @@
                                 {
                                     "Ref": "AWS::StackName"
                                 },
+                                " --configsets BIGIPConfig",
                                 " --resource BIGIPInstance",
                                 " --region ",
                                 {
@@ -741,7 +781,7 @@
         "WindowsInstanceWaitHandle": {
             "Type": "AWS::CloudFormation::WaitConditionHandle"
         },
-        
+
         "WindowsInstanceWaitCondition": {
             "Type": "AWS::CloudFormation::WaitCondition",
             "DependsOn": "WindowsInstance",

@@ -385,6 +385,7 @@
     "WindowsInstanceWaitHandle": {
       "Type": "AWS::CloudFormation::WaitConditionHandle"
     },
+    
     "WindowsInstanceWaitCondition": {
       "Type": "AWS::CloudFormation::WaitCondition",
       "DependsOn": "WindowsInstance",
