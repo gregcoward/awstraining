@@ -393,7 +393,7 @@
         "Handle": {
           "Ref": "WindowsInstanceWaitHandle"
         },
-        "Timeout": "3600"
+        "Timeout": "900"
       }
     }
   },
