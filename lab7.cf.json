@@ -574,14 +574,43 @@
                             "/config/cloud/aws/signalDone.sh": {
                                 "content": {
                                     "Fn::Join": [
-                                        "\n",
+                                        "",
                                         [
-                                            "#!/bin/bash",
+                                            "#!/bin/bash\n",
                                             "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",
                                             {
                                                 "Ref": "BIGIPWaitHandle"
                                             },
-                                            "'"
+                                            "'\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/appConfiguartion.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "date\n",
+                                            "echo 'Starting BIG-IP Applicaiton Config'\n",
+                                            "POOLMEM='",
+                                            { "Fn::GetAtt": [ "WindowsInstance","PrivateIp" ] },
+                                            "'\n",
+                                            "tmsh save /sys config\n",
+                                            "tmsh create ltm pool rdp-pool members add { ${POOLMEM}:3389} } monitor tcp\n",
+                                            "tmsh create ltm pool http-pool members add { ${POOLMEM}:80 } monitor http\n",
+                                            "tmsh save /sys config\n",
+                                            "tmsh create ltm virtual /Common/rdp-3389 { destination 0.0.0.0:3389 mask any ip-protocol tcp pool /Common/rdp-pool profiles replace-all-with { tcp { } } ",
+                                            "source 0.0.0.0/0 source-address-translation { type automap } translate-address enabled translate-port enabled }\n",
+                                            "tmsh create ltm virtual /Common/http-80 { destination 0.0.0.0:80 mask any ip-protocol tcp pool /Common/http-pool profiles replace-all-with { tcp { } http { } } ",
+                                            "source 0.0.0.0/0 source-address-translation { type automap } translate-address enabled translate-port enabled }\n",
+                                            "tmsh save /sys config\n",
+                                            "date\n",
+                                            "echo 'BIG-IP Applicaiton Configuration Done'\n"
                                         ]
                                     ]
                                 },
@@ -672,7 +701,25 @@
                                     ]
                                 }
                             },
-                            "006-signal-done": {
+                            "006-app-config": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/appConfiguartion.sh",
+                                            "--cwd /config/cloud/aws",
+                                            "-o /var/log/appConfiguartion.log",
+                                            "--wait-for ONBOARD_DONE",
+                                            "--signal APP_CONFIG_DONE",
+                                            "--background",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "007-signal-done": {
                                 "command": {
                                     "Fn::Join": [
                                         " ",
@@ -682,7 +729,7 @@
                                             "--file /config/cloud/aws/signalDone.sh",
                                             "--cwd /config/cloud/aws",
                                             "-o /var/log/signlDone.log",
-                                            "--wait-for ONBOARD_DONE",
+                                            "--wait-for APP_CONFIG_DONE",
                                             "--background",
                                             "&>> /var/log/cloudlibs-install.log &"
                                         ]
@@ -746,7 +793,7 @@
                     "Ref": "BIGIPWaitHandle"
                 },
                 "Count": "1",
-                "Timeout": "900"
+                "Timeout": "1200"
             }
         },
 
@@ -871,24 +918,24 @@
                 "Handle": {
                     "Ref": "WindowsInstanceWaitHandle"
                 },
-                "Timeout": "900"
+                "Timeout": "1200"
             }
         }
     },
     "Outputs": {
-        "ServerURL": {
-            "Description": "The AWS Generated URL.",
+        "ServerRDP": {
+            "Description": "Use this to connect to the Windows Server RDP.",
             "Value": {
                 "Fn::Join": [
                     "",
                     [
-                        "http://",
                         {
                             "Fn::GetAtt": [
-                                "WindowsInstance",
+                                "BIGIPInstance",
                                 "PublicDnsName"
                             ]
-                        }
+                        },
+                        ":3389"
                     ]
                 ]
             }
@@ -907,6 +954,24 @@
                             ]
                         },
                         ":8443/"
+                    ]
+                ]
+            }
+        },
+        "ApplicationURL": {
+            "Description": "Use this URL to connect to the application.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "BIGIPInstance",
+                                "PublicDnsName"
+                            ]
+                        },
+                        "/"
                     ]
                 ]
             }
