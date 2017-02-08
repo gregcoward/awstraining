@@ -570,6 +570,24 @@
                                 "mode": "000755",
                                 "owner": "root",
                                 "group": "root"
+                            },
+                            "/config/cloud/aws/signalDone.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",
+                                            {
+                                                "Ref": "BIGIPWaitHandle"
+                                            },
+                                            "'"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
                             }
                         },
                         "commands": {
@@ -633,6 +651,7 @@
                                             "--background",
                                             "--no-reboot",
                                             "--wait-for CREATEUSER_DONE",
+                                            "--signal ONBOARD_DONE",
                                             "--host localhost",
                                             "--user",
                                             {
@@ -656,13 +675,16 @@
                             "006-signal-done": {
                                 "command": {
                                     "Fn::Join": [
-                                        "",
+                                        " ",
                                         [
-                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",
-                                            {
-                                                "Ref": "BIGIPWaitHandle"
-                                            },
-                                            "'"
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/signalDone.sh",
+                                            "--cwd /config/cloud/aws",
+                                            "-o /var/log/signlDone.log",
+                                            "--wait-for ONBOARD_DONE",
+                                            "--background",
+                                            "&>> /var/log/cloudlibs-install.log &"
                                         ]
                                     ]
                                 }
