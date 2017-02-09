@@ -1,0 +1,1029 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single server of Microsoft Windows Server 2012 R2, and then finally configures IIS.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Basics"
+                    },
+                    "Parameters": [
+                        "WindowsName",
+                        "BIGIPName",
+                        "KeyName",
+                        "adminUsername",
+                        "adminPassword"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Size"
+                    },
+                    "Parameters": [
+                        "WindowsInstanceType",
+                        "BIGIPInstanceType"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Settings"
+                    },
+                    "Parameters": [
+                        "WindowsAMI",
+                        "BIGIPAMI"
+                    ]
+                }
+            ],
+            "ParameterLabels": {}
+        }
+    },
+    "Parameters": {
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
+        },
+        "adminUsername": {
+            "Type": "String",
+            "Description": "An admin username for loging into the Windows Server and BIG-IP.",
+            "MaxLength": "255",
+            "MinLength": "1"
+        },
+        "adminPassword": {
+            "Type": "String",
+            "NoEcho": "true",
+            "Description": "A password that will be used to login to the Windows Server and BIG-IP.",
+            "MaxLength": "255",
+            "MinLength": "1"
+        },
+        "WindowsName": {
+            "Description": "The name of the Windows Server.",
+            "Type": "String"
+        },
+        "BIGIPName": {
+            "Description": "The name of the BIG-IP.",
+            "Type": "String"
+        },
+        "WindowsInstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "t2.small",
+            "AllowedValues": [
+                "t1.micro",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "g2.2xlarge",
+                "r3.large",
+                "r3.xlarge",
+                "r3.2xlarge",
+                "r3.4xlarge",
+                "r3.8xlarge",
+                "i2.xlarge",
+                "i2.2xlarge",
+                "i2.4xlarge",
+                "i2.8xlarge",
+                "d2.xlarge",
+                "d2.2xlarge",
+                "d2.4xlarge",
+                "d2.8xlarge",
+                "hi1.4xlarge",
+                "hs1.8xlarge",
+                "cr1.8xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "Choose one of these."
+        },
+        "WindowsAMI": {
+            "Description": "Windows Version and Region AMI",
+            "Type": "String",
+            "Default": "ami-bdb618dd",
+            "AllowedValues": [
+                "ami-bdb618dd",
+                "ami-fc97a7eb"
+            ]
+        },
+        "BIGIPInstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m3.xlarge",
+            "AllowedValues": [
+                "m3.xlarge",
+                "m3.2xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "cc1.4xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "Choose one of these."
+        },
+        "BIGIPAMI": {
+            "Description": "F5 BIG-IP AMI to install from.",
+            "Type": "String",
+            "Default": "ami-8633efe6",
+            "AllowedValues": [
+                "ami-8633efe6",
+                "ami-0b7a011c"
+            ]
+        }
+    },
+    "Resources": {
+        "StackVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "EnableDnsSupport": "true",
+                "EnableDnsHostnames": "true",
+                "CidrBlock": "10.10.0.0/16",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "VPC-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "ExternalSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            "a"
+                        ]
+                    ]
+                },
+                "CidrBlock": "10.10.20.0/24",
+                "MapPublicIpOnLaunch": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ExternalSubnet-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "ServerSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            "b"
+                        ]
+                    ]
+                },
+                "CidrBlock": "10.10.30.0/24",
+                "MapPublicIpOnLaunch": false,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ServerSubnet-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "StackInternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "InternetGateway-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "AttachGateway": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "StackInternetGateway"
+                }
+            }
+        },
+
+        "ServerNATGatewayEIP": {
+            "Type": "AWS::EC2::EIP",
+            "Properties": {
+            }
+        },
+
+        "ServerNATGateway": {
+            "DependsOn" : "ServerSubnetRouteTableAssociation",
+            "Type": "AWS::EC2::NatGateway",
+            "Properties": {
+                "AllocationId": { "Fn::GetAtt" : ["ServerNATGatewayEIP", "AllocationId"]},
+                "SubnetId": { "Ref": "ExternalSubnet" }
+            }
+        },
+
+        "ExternalRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ExternalRouteTable-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "ExternalRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ExternalRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "StackInternetGateway"
+                }
+            }
+        },
+
+        "ExternalSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "ExternalSubnet"
+                },
+                "RouteTableId": {
+                    "Ref": "ExternalRouteTable"
+                }
+            }
+        },
+
+        "ServerRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ServerRouteTable-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "ServerRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ServerRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "ServerNATGateway"
+                }
+            }
+        },
+
+        "ServerSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "ServerSubnet"
+                },
+                "RouteTableId": {
+                    "Ref": "ServerRouteTable"
+                }
+            }
+        },
+
+        "BIGIPSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable HTTP and RDP",
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8443",
+                        "ToPort": "8443",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+
+        "WindowsSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable HTTP and RDP",
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "10.10.20.0/24"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": "10.10.20.0/24"
+                    }
+                ]
+            }
+        },
+
+        "BIGIPInstance": {
+            "DependsOn": "ExternalSubnetRouteTableAssociation",
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "config": {
+                        "files": {
+                            "/config/installCloudLibs.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash",
+                                            "echo about to execute",
+                                            "echo expanding f5-cloud-libs.tar.gz",
+                                            "tar xvfz /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/",
+                                            "echo cloud libs install complete",
+                                            "touch /config/cloud/cloudLibsReady"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/firstrun.utils": {
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root",
+                                "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
+                            },
+                            "/config/cloud/f5-cloud-libs.tar.gz": {
+                                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz",
+                                "mode": "000644",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/waitThenRun.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash",
+                                            "while true; do echo waiting for cloud libs install to complete",
+                                            "    if [ -f /config/cloud/cloudLibsReady ]; then",
+                                            "        echo cloud libs installed",
+                                            "        break",
+                                            "    else",
+                                            "        sleep 10",
+                                            "    fi",
+                                            "done",
+                                            "\"$@\""
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/createUser.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword\n",
+                                            "PASSWORD=",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            "\n",
+                                            "if [ \"$1\" = admin ]; then\n",
+                                            "    tmsh modify auth user \"$1\" password ${PASSWORD}\n",
+                                            "else\n",
+                                            "    tmsh create auth user \"$1\" password ${PASSWORD} shell bash partition-access replace-all-with { all-partitions { role admin } }\n",
+                                            "fi\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/getNameServer.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "INTERFACE=$1",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
+                                            "VPC_NET=${VPC_CIDR_BLOCK%/*}",
+                                            "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
+                                            "echo $NAME_SERVER"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/signalDone.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",
+                                            {
+                                                "Ref": "BIGIPWaitHandle"
+                                            },
+                                            "'\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/appConfiguartion.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "export PATH=\"/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin/\"\n",
+                                            "## You can add or remove any command line arguments that you need to make this work with your iApp.\n",
+                                            "while getopts i:d:x: option\n",
+                                            "do	case \"$option\" in\n",
+                                                "i) ipAddress=$OPTARG;;\n",
+                                                "d) domainFqdn=$OPTARG;;\n",
+                                                "x) passwd=$OPTARG;;\n",
+                                                "esac\n",
+                                            "done\n",
+                                            "user=\"admin\"\n",
+                                            "# download and install Certificate\n",
+                                            "## Uncomment the below section to download and install certificates on your BIG-IP\n",
+                                            "#echo \"Starting Certificate download\"\n",
+                                            "#certificate_location=$sslCert\n",
+                                            "#curl -k -s -f --retry 5 --retry-delay 10 --retry-max-time 10 -o /config/o365FedCert.pfx $certificate_location\n",
+                                            "# \n",
+                                            "#response_code=$(curl -sku $user:$passwd -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/sys/crypto/pkcs12 -d '{\"command\": \"install\",\"name\": \"o365FedCert\",\"options\": [ { \"from-local-file\": \"/config/o365FedCert.pfx\" }, { \"passphrase\": \"'\"$sslPswd\"'\" } ] }' -o /dev/null)\n",
+                                            "#\n",
+                                            "#if [[ $response_code != 200  ]]; then\n",
+                                            "#     echo \"Failed to install SSL cert; exiting with response code '\"$response_code\"'\"\n",
+                                            "#     exit\n",
+                                            "#else \n",
+                                            "#     echo \"Certificate download complete.\"\n",
+                                            "#fi\n",
+                                            "# download iApp templates\n",
+                                            "## Uncomment the below section if you need to download a customer iApp\n",
+                                            "#template_location=\"http://cdn.f5.com/product/blackbox/staging/azure\"\n",
+                                            "#\n",
+                                            "#for template in f5.microsoft_office_365_idp.v1.1.0.tmpl\n",
+                                            "#do\n",
+                                            "#     curl -k -s -f --retry 5 --retry-delay 10 --retry-max-time 10 -o /config/$template $template_location/$template\n",
+                                            "#     response_code=$(curl -sku $user:$passwd -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/sys/config -d '{\"command\": \"load\",\"name\": \"merge\",\"options\": [ { \"file\": \"/config/'\"$template\"'\" } ] }' -o /dev/null)\n",
+                                            "#     if [[ $response_code != 200  ]]; then\n",
+                                            "#          echo \"Failed to install iApp template; exiting with response code '\"$response_code\"'\"\n",
+                                            "#          exit\n",
+                                            "#     else\n",
+                                            "#          echo \"iApp template installation complete.\"\n",
+                                            "#     fi\n",
+                                            "#     sleep 10\n",
+                                            "#done\n",
+                                            "# deploy application\n",
+                                            "response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost:8443/mgmt/tm/sys/application/service/ -d '{\"name\":\"windows_test_app\",\"partition\":\"Common\",\"deviceGroup\":\"none\",\"inheritedDevicegroup\":\"true\",\"inheritedTrafficGroup\":\"false\",\"strictUpdates\":\"enabled\",\"template\":\"/Common/f5.microsoft_iis\",\"trafficGroup\":\"none\",\"lists\":[{\"name\":\"irules__irules\",\"encrypted\":\"no\"},{\"name\":\"net__client_vlan\",\"encrypted\":\"no\",\"value\":[\"/Common/external\"]}],\"tables\":[{\"name\":\"basic__snatpool_members\"},{\"name\":\"net__snatpool_members\"},{\"name\":\"optimizations__hosts\"},{\"name\":\"pool__hosts\",\"columnNames\":[\"name\"],\"rows\":[{\"row\":[\"${domainFqdn}\"]}]},{\"name\":\"pool__members\",\"columnNames\":[\"addr\",\"port\",\"connection_limit\"],\"rows\":[{\"row\":[\"${ipAddress}\",\"80\",\"0\"]}]},{\"name\":\"server_pools__servers\"}],\"variables\":[{\"name\":\"client__http_compression\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"client__standard_caching_without_wa\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"client__tcp_wan_opt\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"monitor__credentials\",\"encrypted\":\"no\",\"value\":\"none\"},{\"name\":\"monitor__frequency\",\"encrypted\":\"no\",\"value\":\"30\"},{\"name\":\"monitor__http_method\",\"encrypted\":\"no\",\"value\":\"GET\"},{\"name\":\"monitor__http_version\",\"encrypted\":\"no\",\"value\":\"http11\"},{\"name\":\"monitor__monitor\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"monitor__response\",\"encrypted\":\"no\"},{\"name\":\"monitor__uri\",\"encrypted\":\"no\",\"value\":\"/\"},{\"name\":\"net__client_mode\",\"encrypted\":\"no\",\"value\":\"wan\"},{\"name\":\"net__route_to_bigip\",\"encrypted\":\"no\",\"value\":\"no\"},{\"name\":\"net__same_subnet\",\"encrypted\":\"no\",\"value\":\"no\"},{\"name\":\"net__server_mode\",\"encrypted\":\"no\",\"value\":\"lan\"},{\"name\":\"net__snat_type\",\"encrypted\":\"no\",\"value\":\"automap\"},{\"name\":\"net__vlan_mode\",\"encrypted\":\"no\",\"value\":\"enabled\"},{\"name\":\"pool__addr\",\"encrypted\":\"no\",\"value\":\"0.0.0.0\"},{\"name\":\"pool__http\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"pool__lb_method\",\"encrypted\":\"no\",\"value\":\"least-connections-member\"},{\"name\":\"pool__mask\",\"encrypted\":\"no\",\"value\":\"0.0.0.0\"},{\"name\":\"pool__persist\",\"encrypted\":\"no\",\"value\":\"/#cookie#\"},{\"name\":\"pool__pool_to_use\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"pool__port\",\"encrypted\":\"no\",\"value\":\"80\"},{\"name\":\"pool__use_pga\",\"encrypted\":\"no\",\"value\":\"no\"},{\"name\":\"pool__xff\",\"encrypted\":\"no\",\"value\":\"yes\"},{\"name\":\"server__ntlm\",\"encrypted\":\"no\",\"value\":\"/#do_not_use#\"},{\"name\":\"server__oneconnect\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"server__slow_ramp_setvalue\",\"encrypted\":\"no\",\"value\":\"300\"},{\"name\":\"server__tcp_lan_opt\",\"encrypted\":\"no\",\"value\":\"/#create_new#\"},{\"name\":\"server__tcp_req_queueing\",\"encrypted\":\"no\",\"value\":\"no\"},{\"name\":\"server__use_slow_ramp\",\"encrypted\":\"no\",\"value\":\"yes\"},{\"name\":\"ssl__mode\",\"encrypted\":\"no\",\"value\":\"no_ssl\"},{\"name\":\"ssl_encryption_questions__advanced\",\"encrypted\":\"no\",\"value\":\"yes\"},{\"name\":\"ssl_encryption_questions__help\",\"encrypted\":\"no\",\"value\":\"hide\"},{\"name\":\"stats__request_logging\",\"encrypted\":\"no\",\"value\":\"/#do_not_use#\"}]}' -o /dev/null)\n",
+                                            "if [[ $response_code != 200  ]]; then\n",
+                                                "echo \"Failed to install iApp template; exiting with response code '\"$response_code\"'\"\n",
+                                                "exit\n",
+                                            "else\n",
+                                                "echo \"Deployment complete.\"\n",
+                                            "fi\n",
+                                            "exit\n",
+                                            "# How to get the json formatted string from an iApp that has been run and fully configured ... \n",
+                                            "# *** Please NOTE the \"~\" ...***\n",
+                                            "#curl -skvv -u admin:admin -X GET -H \"Content-Type: application/json\" https://localhost/mgmt/tm/sys/application/service/~Common~iappname.app~iappname | jq . \n",
+                                            "tmsh save /sys config\n",
+                                            "tmsh create ltm pool rdp-pool members add { ${POOLMEM}:3389} monitor tcp\n",
+                                            "tmsh save /sys config\n",
+                                            "tmsh create ltm virtual /Common/rdp-3389 { destination 0.0.0.0:3389 mask any ip-protocol tcp pool /Common/rdp-pool profiles replace-all-with { tcp { } } ",
+                                            "source 0.0.0.0/0 source-address-translation { type automap } translate-address enabled translate-port enabled }\n",
+                                            "tmsh save /sys config\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "001-disable-1nicautoconfig": {
+                                "command": "/usr/bin/setdb provision.1nicautoconfig disable &>> /var/log/cloudlibs-install.log"
+                            },
+                            "002-install-libs": {
+                                "command": "/config/installCloudLibs.sh &>> /var/log/cloudlibs-install.log"
+                            },
+                            "003-1nic-setup": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
+                                            "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
+                                            "-o /var/log/1nicSetup.log",
+                                            "--signal 1_NIC_SETUP_DONE",
+                                            "--background",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "004-create-admin-user": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            " f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            " --file /config/cloud/aws/createUser.sh",
+                                            " --cl-args '",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            "'",
+                                            " --signal CREATEUSER_DONE",
+                                            " --wait-for 1_NIC_SETUP_DONE",
+                                            " --log-level verbose",
+                                            " -o /var/log/createUser.log",
+                                            " --background",
+                                            " &>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "005-onboard-BIG-IP": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "NAME_SERVER=`/config/cloud/aws/getNameServer.sh eth0`;",
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/onboard.js",
+                                            "--ssl-port '8443'",
+                                            "--log-level verbose",
+                                            "-o  /var/log/onboard.log",
+                                            "--background",
+                                            "--no-reboot",
+                                            "--wait-for CREATEUSER_DONE",
+                                            "--signal ONBOARD_DONE",
+                                            "--host localhost",
+                                            "--user",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            "--password",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
+                                            "--ntp 0.us.pool.ntp.org",
+                                            "--ntp 1.us.pool.ntp.org",
+                                            "--tz UTC",
+                                            "--dns ${NAME_SERVER}",
+                                            "--module ltm:nominal",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "006-app-config": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/appConfiguartion.sh",
+                                            "--cwd /config/cloud/aws",
+                                            "--cl-args '",
+                                            "-i ",
+                                            { "Fn::GetAtt": [ "WindowsInstance","PrivateIp" ] },
+                                            " -d myWebapp.example.com",
+                                            " -x ",
+                                            { "Ref": "adminUsername" },
+                                            "'",
+                                            "-o /var/log/appConfiguartion.log",
+                                            "--wait-for ONBOARD_DONE",
+                                            "--signal APP_CONFIG_DONE",
+                                            "--background",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "007-signal-done": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/signalDone.sh",
+                                            "--cwd /config/cloud/aws",
+                                            "-o /var/log/signlDone.log",
+                                            "--wait-for APP_CONFIG_DONE",
+                                            "--background",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "BIGIPInstanceType"
+                },
+                "ImageId": {
+                    "Ref": "BIGIPAMI"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "ExternalSubnet"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "BIGIPSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash\n",
+                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-init -v ",
+                                " --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                " --resource BIGIPInstance",
+                                " --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+
+        "BIGIPWaitCondition": {
+            "Type": "AWS::CloudFormation::WaitCondition",
+            "DependsOn": "BIGIPInstance",
+            "Properties": {
+                "Handle": {
+                    "Ref": "BIGIPWaitHandle"
+                },
+                "Count": "1",
+                "Timeout": "1200"
+            }
+        },
+
+        "BIGIPWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle",
+            "Properties": {}
+        },
+
+        "WindowsInstance": {
+            "DependsOn":"ServerNATGateway",
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "config": {
+                        "files": {
+                            "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "echo \"Installing web-webserver\"\n",
+                                            "add-windowsfeature web-webserver -includeallsubfeature -logpath $env:temp\\webserver_addrole.log\n",
+                                            "echo \"Installing web-mgmt-tools\"\n",
+                                            "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
+                                            "echo \"This is the first Windows IIS Server ",
+                                            {
+                                                "Ref": "WindowsName"
+                                            },
+                                            "\" >> C:\\inetpub\\wwwroot\\index.html\n",
+                                            "$pass = ConvertTo-SecureString \"",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            "\" -AsPlainText -Force\n",
+                                            "New-LocalUser -Name \"tstanley\" -Password $pass -PasswordNeverExpires\n",
+                                            "Add-LocalGroupMember -Group \"Administrators\" -Member \"",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            "\"\n",
+                                            "if ($?) {\n",
+                                            "$LASTEXITCODE = 0\n",
+                                            "} else {\n",
+                                            "$LASTEXITCODE = 1\n",
+                                            "}\n",
+                                            "$waitHandle = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"",                                            
+                                            {
+                                                "Fn::Base64": {
+                                                    "Ref": "WindowsInstanceWaitHandle"
+                                                }
+                                            },
+                                            "\"))",
+                                            "\n",
+                                            "cfn-signal.exe -e $LASTEXITCODE $waitHandle\n"
+                                        ]
+                                    ]
+                                }
+                            }
+                        },
+                        "commands": {
+                            "b-configure": {
+                                "command": "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "WindowsInstanceType"
+                },
+                "ImageId": {
+                    "Ref": "WindowsAMI"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "ServerSubnet"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "WindowsSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "<script>\n",
+                                "cfn-init.exe -v ",
+                                " --stack ",
+                                {
+                                    "Ref": "AWS::StackId"
+                                },
+                                " --resource WindowsInstance",
+                                " --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",                                
+                                "</script>"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+
+        "WindowsInstanceWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        },
+
+        "WindowsInstanceWaitCondition": {
+            "Type": "AWS::CloudFormation::WaitCondition",
+            "DependsOn": "WindowsInstance",
+            "Properties": {
+                "Handle": {
+                    "Ref": "WindowsInstanceWaitHandle"
+                },
+                "Timeout": "1200"
+            }
+        }
+    },
+    "Outputs": {
+        "ServerRDP": {
+            "Description": "Use this to connect to the Windows Server RDP.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {
+                            "Fn::GetAtt": [
+                                "BIGIPInstance",
+                                "PublicDnsName"
+                            ]
+                        },
+                        ":3389"
+                    ]
+                ]
+            }
+        },
+        "BIGIPURL": {
+            "Description": "The BIG-IP MGMT URL.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Fn::GetAtt": [
+                                "BIGIPInstance",
+                                "PublicDnsName"
+                            ]
+                        },
+                        ":8443/"
+                    ]
+                ]
+            }
+        },
+        "ApplicationURL": {
+            "Description": "Use this URL to connect to the application.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "BIGIPInstance",
+                                "PublicDnsName"
+                            ]
+                        },
+                        "/"
+                    ]
+                ]
+            }
+        }
+    }
+}
