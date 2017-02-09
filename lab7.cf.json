@@ -601,7 +601,7 @@
                                             { "Fn::GetAtt": [ "WindowsInstance","PrivateIp" ] },
                                             "'\n",
                                             "tmsh save /sys config\n",
-                                            "tmsh create ltm pool rdp-pool members add { ${POOLMEM}:3389} } monitor tcp\n",
+                                            "tmsh create ltm pool rdp-pool members add { ${POOLMEM}:3389} monitor tcp\n",
                                             "tmsh create ltm pool http-pool members add { ${POOLMEM}:80 } monitor http\n",
                                             "tmsh save /sys config\n",
                                             "tmsh create ltm virtual /Common/rdp-3389 { destination 0.0.0.0:3389 mask any ip-protocol tcp pool /Common/rdp-pool profiles replace-all-with { tcp { } } ",
