@@ -62,7 +62,7 @@ fi
 
 ## Create an RDP Pool for access to the Windows Server.
 
-pool_response_code=$(curl -sku ${user}:${passwd} -w "%{http_code}" -X POST -H "Content-Type: application/json" https://localhost:8443/mgmt/tm/sys/application/service/ -d '{"name":"rdp_pool","description":"rdp_pool","monitor":"/Common/tcp ","members":[{"name":"'"$ipAddress"'":"3389","address":"'"$ipAddress"'"}]}'
+pool_response_code=$(curl -sku ${user}:${passwd} -w "%{http_code}" -X POST -H "Content-Type: application/json" https://localhost:8443/mgmt/tm/ltm/pool -d '{"name":"rdp_pool","description":"rdp_pool","monitor":"/Common/tcp ","members":[{"name":"'"$ipAddress"':3389","address":"'"$ipAddress"'"}]}')
 
 if [[ ${pool_response_code} != 200 ]]; then
     echo "Failed to create the rdp_pool; exiting with response code ${pool_response_code}"
@@ -73,7 +73,7 @@ fi
 
 ## Create an RDP Virtual for access to the Windows Server.
 
-vip_response_code=$(curl -sku ${user}:${passwd} -w "%{http_code}" -X POST -H "Content-Type: application/json" https://localhost:8443/mgmt/tm/sys/application/service/ -d '{"name":"rdp_vip","destination":"/Common/0.0.0.0:3389","enabled":true,"ipProtocol":"tcp","mask":"any","pool":"/Common/rdp_pool","source":"0.0.0.0/0","sourceAddressTranslation":{"type":"automap"},"translateAddress":"enabled","translatePort":"enabled","vlansDisabled":true,"vsIndex":3,"profiles":[{"name":"tcp"}]}'
+vip_response_code=$(curl -sku ${user}:${passwd} -w "%{http_code}" -X POST -H "Content-Type: application/json" https://localhost:8443/mgmt/tm/ltm/virtual -d '{"name":"rdp_vip","destination":"/Common/0.0.0.0:3389","enabled":true,"ipProtocol":"tcp","mask":"any","pool":"/Common/rdp_pool","source":"0.0.0.0/0","sourceAddressTranslation":{"type":"automap"},"translateAddress":"enabled","translatePort":"enabled","vlansDisabled":true,"vsIndex":3,"profiles":[{"name":"tcp"}]}')
 
 if [[ ${vip_response_code} != 200 ]]; then
     echo "Failed to create RDP-VIP; exiting with response code ${vip_response_code}"
@@ -81,6 +81,5 @@ if [[ ${vip_response_code} != 200 ]]; then
 else
     echo "RDP_VIP creation complete."
 fi
-
 exit
 
