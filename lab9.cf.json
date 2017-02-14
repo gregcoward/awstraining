@@ -1,0 +1,401 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single Ubuntu server uploads the App Connector RPM and finally configures App Connector.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Basics"
+          },
+          "Parameters": [
+            "appConnectorName",
+            "KeyName",
+            "adminUsername",
+            "adminPassword"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Size"
+          },
+          "Parameters": [
+            "appConnectorType"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Settings"
+          },
+          "Parameters": [
+            "appConnectorAMI"
+          ]
+        }
+      ],
+      "ParameterLabels": {}
+    }
+  },
+  "Parameters": {
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
+    },
+    "appConnectorName": {
+      "Description": "The name of the application connector.",
+      "Type": "String"
+    },
+    "adminUsername": {
+      "Type": "String",
+      "Description": "An admin username for loging into the application connector.",
+      "MaxLength": "255",
+      "MinLength": "1"
+    },
+    "adminPassword": {
+      "Type": "String",
+      "NoEcho": "true",
+      "Description": "A password that will be used to login into the applicaiton connector.",
+      "MaxLength": "255",
+      "MinLength": "1"
+    },
+    "appConnectorType": {
+      "Description": "EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t1.micro",
+        "t2.micro",
+        "t2.small",
+        "m1.small"
+      ],
+      "ConstraintDescription": "Choose one of the following."
+    },
+    "appConnectorAMI": {
+      "Description": "Ubuntu Version and Region AMI",
+      "Type": "String",
+      "Default": "ami-7905ca19",
+      "AllowedValues": [
+          "ami-7905ca19",
+          "ami-d051c4c7"
+      ]
+    }
+  },
+  "Resources": {
+    "StackVPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "CidrBlock": "10.10.0.0/16",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "VPC-",
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "externalSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "CidrBlock": "10.10.10.0/24",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "ExternalSubnet-",
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "internalSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "CidrBlock": "10.10.10.0/24",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "internalSubnet-",
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "StackInternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "InternetGateway-",
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "AttachGateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "InternetGatewayId": {
+          "Ref": "StackInternetGateway"
+        }
+      }
+    },
+
+    "ServerNATGatewayEIP": {
+        "Type": "AWS::EC2::EIP",
+        "Properties": {}
+    },
+
+    "ServerNATGateway": {
+        "DependsOn": "ServerSubnetRouteTableAssociation",
+        "Type": "AWS::EC2::NatGateway",
+        "Properties": {
+            "AllocationId": {
+                "Fn::GetAtt": [
+                    "ServerNATGatewayEIP",
+                    "AllocationId"
+                ]
+            },
+            "SubnetId": {
+                "Ref": "ExternalSubnet"
+            }
+        }
+    },
+
+    "ExternalRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "ExternalRouteTable-",
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "ExternalRoute": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ExternalRouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "StackInternetGateway"
+        }
+      }
+    },
+
+    "ExternalSubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "StackSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "ExternalRouteTable"
+        }
+      }
+    },
+
+    "internalRouteTable": {
+        "Type": "AWS::EC2::RouteTable",
+        "Properties": {
+            "VpcId": {
+                "Ref": "StackVPC"
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "internalRouteTable-",
+                                {
+                                    "Ref": "AWS::StackName"
+                                }
+                            ]
+                        ]
+                    }
+                }
+            ]
+        }
+    },
+    
+    "ServerRoute": {
+        "Type": "AWS::EC2::Route",
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "internalRouteTable"
+            },
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "NatGatewayId": {
+                "Ref": "ServerNATGateway"
+            }
+        }
+    },
+
+    "internalSubnetRouteTableAssociation": {
+        "Type": "AWS::EC2::SubnetRouteTableAssociation",
+        "Properties": {
+            "SubnetId": {
+                "Ref": "internalSubnet"
+            },
+            "RouteTableId": {
+                "Ref": "intenralRouteTable"
+            }
+        }
+    },
+    
+    "appConnectorInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+            },
+            "commands": {
+            }
+          }
+        }
+      },
+      "Properties": {
+        "InstanceType": {
+          "Ref": "appConnectorType"
+        },
+        "ImageId": {
+          "Ref": "appConnectorAMI"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "externalSubnet"
+        },
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "/opt/aws/bin/cfn-init -v ",
+                " --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
+                " --resource appConnectorInstance",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+
+    "appConnectorInstanceWaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle"
+    },
+    
+    "appConnectorInstanceWaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "appConnectorInstance",
+      "Properties": {
+        "Handle": {
+          "Ref": "appConnectorInstanceWaitHandle"
+        },
+        "Timeout": "900"
+      }
+    }
+  },
+  "Outputs": {
+    "ServerURL": {
+      "Description": "The AWS Generated URL.",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt": [
+                "WindowsInstance",
+                "PublicDnsName"
+              ]
+            }
+          ]
+        ]
+      }
+    }
+  }
+}
