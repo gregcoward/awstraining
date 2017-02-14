@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single server of Microsoft Windows Server 2012 R2, and then finally configures IIS.",
+    "Description": "This template creates a full deployment including a VPC and all supporting infrastructure as well as a single server of Microsoft Windows Server 2012 R2 fully configured as an IIS server, and then finally deploys and configures a BIG-IP.",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
