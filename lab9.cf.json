@@ -210,7 +210,7 @@
                 ]
             },
             "SubnetId": {
-                "Ref": "ExternalSubnet"
+                "Ref": "externalSubnet"
             }
         }
     },
@@ -257,7 +257,7 @@
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "SubnetId": {
-          "Ref": "StackSubnet"
+          "Ref": "externalSubnet"
         },
         "RouteTableId": {
           "Ref": "ExternalRouteTable"
@@ -321,8 +321,17 @@
         "AWS::CloudFormation::Init": {
           "config": {
             "files": {
+                "/config/cloud/app-connector-0.0.1-53.noarch.rpm": {
+                    "source": "https://github.com/gregcoward/awstraining/blob/master/app-connector-0.0.1-53.noarch.rpm",
+                    "mode": "000644",
+                    "owner": "root",
+                    "group": "root"
+                }
             },
             "commands": {
+                "install": {
+                    "command": ""
+                }
             }
           }
         }
@@ -389,7 +398,7 @@
             "http://",
             {
               "Fn::GetAtt": [
-                "WindowsInstance",
+                "appConnectorInstance",
                 "PublicDnsName"
               ]
             }
