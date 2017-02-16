@@ -407,6 +407,7 @@
                                             "date\n",
                                             "echo 'Starting BIG-IP Service Center Installation'\n",
                                             "rpm -Uvh app-connector-0.0.1-53.noarch.rpm\n",
+                                            "touch /var/config/rest/iapps/enable\n",
                                             "date\n",
                                             "echo 'BIG-IP Service Center Installation Done'\n"
                                         ]
