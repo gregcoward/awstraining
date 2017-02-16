@@ -311,7 +311,7 @@
                                 "group": "root"
                             },
                             "/config/cloud/app-connector-0.0.1-53.noarch.rpm": {
-                                "source": "https://github.com/gregcoward/awstraining/blob/master/app-connector-0.0.1-53.noarch.rpm",
+                                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/app-connector-0.0.1-53.noarch.rpm",
                                 "mode": "000644",
                                 "owner": "root",
                                 "group": "root"

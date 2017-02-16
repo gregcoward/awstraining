@@ -504,7 +504,10 @@
                         }
                     },
                     "commands": {
-                        "001-app-config": {
+                        "001-install-libs": {
+                            "command": "/config/installCloudLibs.sh &>> /var/log/cloudlibs-install.log"
+                        },
+                        "002-app-config": {
                             "command": {
                                 "Fn::Join": [
                                     " ",
@@ -513,8 +516,7 @@
                                         "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
                                         "--file /config/cloud/aws/appConfiguartion.sh",
                                         "--cwd /config/cloud/aws",
-                                        "-o /var/log/appConfiguartion.log",
-                                        "--wait-for ONBOARD_DONE",
+                                        "-o /var/log/appConfiguartion.log",                                        
                                         "--signal APP_CONFIG_DONE",
                                         "--background",
                                         "&>> /var/log/cloudlibs-install.log &"
@@ -522,7 +524,7 @@
                                 ]
                             }
                         },
-                        "002-signal-done": {
+                        "003-signal-done": {
                             "command": {
                                 "Fn::Join": [
                                     " ",
