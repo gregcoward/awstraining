@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single Ubuntu server uploads the App Connector RPM and finally configures App Connector.",
+  "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single CentOS 7 server then uploads the App Connector tarball and finally starts App Connector.",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -73,10 +73,10 @@
     "appConnectorAMI": {
       "Description": "Ubuntu Version and Region AMI",
       "Type": "String",
-      "Default": "ami-7905ca19",
+      "Default": "ami-d2c924b2",
       "AllowedValues": [
-          "ami-7905ca19",
-          "ami-d051c4c7"
+        "ami-d2c924b2",
+        "ami-6d1c2007"
       ]
     }
   },
@@ -139,7 +139,7 @@
         "VpcId": {
           "Ref": "StackVPC"
         },
-        "CidrBlock": "10.10.10.0/24",
+        "CidrBlock": "10.10.20.0/24",
         "MapPublicIpOnLaunch": false,
         "Tags": [
           {
@@ -195,24 +195,24 @@
     },
 
     "ServerNATGatewayEIP": {
-        "Type": "AWS::EC2::EIP",
-        "Properties": {}
+      "Type": "AWS::EC2::EIP",
+      "Properties": {}
     },
 
     "ServerNATGateway": {
-        "DependsOn": "ServerSubnetRouteTableAssociation",
-        "Type": "AWS::EC2::NatGateway",
-        "Properties": {
-            "AllocationId": {
-                "Fn::GetAtt": [
-                    "ServerNATGatewayEIP",
-                    "AllocationId"
-                ]
-            },
-            "SubnetId": {
-                "Ref": "externalSubnet"
-            }
+      "DependsOn": "internalSubnetRouteTableAssociation",
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "ServerNATGatewayEIP",
+            "AllocationId"
+          ]
+        },
+        "SubnetId": {
+          "Ref": "externalSubnet"
         }
+      }
     },
 
     "ExternalRouteTable": {
@@ -266,76 +266,82 @@
     },
 
     "internalRouteTable": {
-        "Type": "AWS::EC2::RouteTable",
-        "Properties": {
-            "VpcId": {
-                "Ref": "StackVPC"
-            },
-            "Tags": [
-                {
-                    "Key": "Name",
-                    "Value": {
-                        "Fn::Join": [
-                            "",
-                            [
-                                "internalRouteTable-",
-                                {
-                                    "Ref": "AWS::StackName"
-                                }
-                            ]
-                        ]
-                    }
-                }
-            ]
-        }
-    },
-    
-    "ServerRoute": {
-        "Type": "AWS::EC2::Route",
-        "Properties": {
-            "RouteTableId": {
-                "Ref": "internalRouteTable"
-            },
-            "DestinationCidrBlock": "0.0.0.0/0",
-            "NatGatewayId": {
-                "Ref": "ServerNATGateway"
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "internalRouteTable-",
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
             }
+          }
+        ]
+      }
+    },
+
+    "ServerRoute": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "internalRouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "ServerNATGateway"
         }
+      }
     },
 
     "internalSubnetRouteTableAssociation": {
-        "Type": "AWS::EC2::SubnetRouteTableAssociation",
-        "Properties": {
-            "SubnetId": {
-                "Ref": "internalSubnet"
-            },
-            "RouteTableId": {
-                "Ref": "intenralRouteTable"
-            }
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "internalSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "internalRouteTable"
         }
+      }
     },
-    
-    "appConnectorInstance": {
-      "Type": "AWS::EC2::Instance",
-      "Metadata": {
-        "AWS::CloudFormation::Init": {
-          "config": {
-            "files": {
-                "/config/cloud/app-connector-0.0.1-53.noarch.rpm": {
-                    "source": "https://github.com/gregcoward/awstraining/blob/master/app-connector-0.0.1-53.noarch.rpm",
-                    "mode": "000644",
-                    "owner": "root",
-                    "group": "root"
-                }
-            },
-            "commands": {
-                "install": {
-                    "command": ""
-                }
-            }
+
+    "appConnectorSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable HTTP and SSH",
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "8080",
+            "ToPort": "8080",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
           }
-        }
-      },
+        ]
+      }
+    },
+
+    "appConnectorInstance": {
+      "DependsOn": "ServerNATGateway",
+      "Type": "AWS::EC2::Instance",
       "Properties": {
         "InstanceType": {
           "Ref": "appConnectorType"
@@ -349,48 +355,56 @@
         "SubnetId": {
           "Ref": "externalSubnet"
         },
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "appConnectorSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ],
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [
               "",
               [
                 "#!/bin/bash -xe\n",
-                "/opt/aws/bin/cfn-init -v ",
-                " --stack ",
-                {
-                  "Ref": "AWS::StackId"
-                },
-                " --resource appConnectorInstance",
-                " --region ",
-                {
-                  "Ref": "AWS::Region"
-                },
+                "#\n",
+                "# Get the proxy tarball.\n",
+                "curl -sk https://raw.githubusercontent.com/gregcoward/awstraining/master/proxy-0-0-1.tgz -o /opt/proxy-0-0-1.tgz\n",
+                "#\n",
+                "chmod 000644 /opt/proxy-0-0-1.tgz\n",
+                "chown root:root /opt/proxy-0-0-1.tgz\n",
+                "#\n",
+                "# Download Node\n",
+                "curl --silent --location https://rpm.nodesource.com/setup_7.x | bash -\n",
+                "#\n",
+                "# Install Node\n",
+                "yum -y install nodejs\n",
+                "#\n",
+                "# Extract the proxy\n",
+                "cd /opt\n",
+                "tar -zxvf /opt/proxy-0-0-1.tgz\n",
+                "#\n",
+                "# Start the proxy\n",
+                "node /opt/proxy/lib/Proxy.js -n ",
+                { "Ref" : "appConnectorName" },
+                " -u ",
+                { "Ref" : "adminUsername" },
+                " -w ",
+                { "Ref" : "adminPassword" },
                 "\n"
               ]
             ]
           }
         }
       }
-    },
-
-    "appConnectorInstanceWaitHandle": {
-      "Type": "AWS::CloudFormation::WaitConditionHandle"
-    },
-    
-    "appConnectorInstanceWaitCondition": {
-      "Type": "AWS::CloudFormation::WaitCondition",
-      "DependsOn": "appConnectorInstance",
-      "Properties": {
-        "Handle": {
-          "Ref": "appConnectorInstanceWaitHandle"
-        },
-        "Timeout": "900"
-      }
     }
   },
+
   "Outputs": {
     "ServerURL": {
-      "Description": "The AWS Generated URL.",
+      "Description": "The URL to connect to the Application Connector.",
       "Value": {
         "Fn::Join": [
           "",
@@ -401,7 +415,8 @@
                 "appConnectorInstance",
                 "PublicDnsName"
               ]
-            }
+            },
+            ":8080/"
           ]
         ]
       }
