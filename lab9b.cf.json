@@ -340,213 +340,102 @@
     },
 
     "appConnectorInstance": {
-        "DependsOn": "ServerNATGateway",
-        "Type": "AWS::EC2::Instance",
-        "Metadata": {
-            "AWS::CloudFormation::Init": {
-                "config": {
-                    "files": {
-                        "/config/installCloudLibs.sh": {
-                            "content": {
-                                "Fn::Join": [
-                                    "\n",
-                                    [
-                                        "#!/bin/bash",
-                                        "echo about to execute",
-                                        "echo expanding f5-cloud-libs.tar.gz",
-                                        "tar xvfz /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/",
-                                        "echo cloud libs install complete",
-                                        "touch /config/cloud/cloudLibsReady"
-                                    ]
-                                ]
-                            },
-                            "mode": "000755",
-                            "owner": "root",
-                            "group": "root"
-                        },
-                        "/config/cloud/aws/firstrun.utils": {
-                            "group": "root",
-                            "mode": "000755",
-                            "owner": "root",
-                            "source": "http://cdn.f5.com/product/templates/utils/firstrun.utils"
-                        },
-                        "/config/cloud/f5-cloud-libs.tar.gz": {
-                            "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz",
-                            "mode": "000644",
-                            "owner": "root",
-                            "group": "root"
-                        },
-                        "/config/waitThenRun.sh": {
-                            "content": {
-                                "Fn::Join": [
-                                    "\n",
-                                    [
-                                        "#!/bin/bash",
-                                        "while true; do echo waiting for cloud libs install to complete",
-                                        "    if [ -f /config/cloud/cloudLibsReady ]; then",
-                                        "        echo cloud libs installed",
-                                        "        break",
-                                        "    else",
-                                        "        sleep 10",
-                                        "    fi",
-                                        "done",
-                                        "\"$@\""
-                                    ]
-                                ]
-                            },
-                            "mode": "000755",
-                            "owner": "root",
-                            "group": "root"
-                        },
-                        "/config/cloud/aws/createUser.sh": {
-                            "content": {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword\n",
-                                        "PASSWORD=",
-                                        {
-                                            "Ref": "adminPassword"
-                                        },
-                                        "\n",
-                                        "if [ \"$1\" = admin ]; then\n",
-                                        "    tmsh modify auth user \"$1\" password ${PASSWORD}\n",
-                                        "else\n",
-                                        "    tmsh create auth user \"$1\" password ${PASSWORD} shell bash partition-access replace-all-with { all-partitions { role admin } }\n",
-                                        "fi\n"
-                                    ]
-                                ]
-                            },
-                            "mode": "000755",
-                            "owner": "root",
-                            "group": "root"
-                        },
-                        "/config/cloud/aws/getNameServer.sh": {
-                            "content": {
-                                "Fn::Join": [
-                                    "\n",
-                                    [
-                                        "INTERFACE=$1",
-                                        "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                        "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
-                                        "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
-                                        "VPC_NET=${VPC_CIDR_BLOCK%/*}",
-                                        "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
-                                        "echo $NAME_SERVER"
-                                    ]
-                                ]
-                            },
-                            "mode": "000755",
-                            "owner": "root",
-                            "group": "root"
-                        },                        
-                        "/config/cloud/aws/signalDone.sh": {
-                            "content": {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "#!/bin/bash\n",
-                                        "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",
-                                        {
-                                            "Ref": "BIGIPWaitHandle"
-                                        },
-                                        "'\n"
-                                    ]
-                                ]
-                            },
-                            "mode": "000755",
-                            "owner": "root",
-                            "group": "root"
-                        },
-                        "/opt/proxy-0-0-1.tgz": {
-                            "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/proxy-0-0-1.tgz",
-                            "mode": "000644",
-                            "owner": "root",
-                            "group": "root"
-                        },
-                        "/opt/appConfiguartion.sh": {
-                            "content": {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "#!/bin/bash -xe\n",
-                                        "#\n",                                        
-                                        "# Download Node\n",
-                                        "curl --silent --location https://rpm.nodesource.com/setup_7.x | bash -\n",
-                                        "#\n",
-                                        "# Install Node\n",
-                                        "yum -y install nodejs\n",
-                                        "#\n",
-                                        "# Extract the proxy\n",
-                                        "cd /opt\n",
-                                        "tar -zxvf /opt/proxy-0-0-1.tgz\n",
-                                        "#\n",
-                                        "# Start the proxy\n",
-                                        "node /opt/proxy/lib/Proxy.js -n ",
-                                        {
-                                            "Ref": "appConnectorName"
-                                        },
-                                        " -u ",
-                                        {
-                                            "Ref": "adminUsername"
-                                        },
-                                        " -w ",
-                                        {
-                                            "Ref": "adminPassword"
-                                        },
-                                        "\n"
-                                    ]
-                                ]
-                            },
-                            "mode": "000755",
-                            "owner": "root",
-                            "group": "root"
-                        }
-                    },
-                    "commands": {
-                        "001-install-libs": {
-                            "command": "/config/installCloudLibs.sh &>> /var/log/cloudlibs-install.log"
-                        },
-                        "002-app-config": {
-                            "command": {
-                                "Fn::Join": [
-                                    " ",
-                                    [
-                                        "nohup /config/waitThenRun.sh",
-                                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
-                                        "--file /config/cloud/aws/appConfiguartion.sh",
-                                        "--cwd /config/cloud/aws",
-                                        "-o /var/log/appConfiguartion.log",                                        
-                                        "--signal APP_CONFIG_DONE",
-                                        "--background",
-                                        "&>> /var/log/cloudlibs-install.log &"
-                                    ]
-                                ]
-                            }
-                        },
-                        "003-signal-done": {
-                            "command": {
-                                "Fn::Join": [
-                                    " ",
-                                    [
-                                        "nohup /config/waitThenRun.sh",
-                                        "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
-                                        "--file /config/cloud/aws/signalDone.sh",
-                                        "--cwd /config/cloud/aws",
-                                        "-o /var/log/signlDone.log",
-                                        "--wait-for APP_CONFIG_DONE",
-                                        "--background",
-                                        "&>> /var/log/cloudlibs-install.log &"
-                                    ]
-                                ]
-                            }
-                        }
-                    }
+      "DependsOn": "ServerNATGateway",
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+              "/opt/signalDone.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "/opt/aws/bin/cfn-signal -e $? '",
+                      {
+                        "Ref": "appConnectorWaitHandle"
+                      },
+                      "'\n"
+                    ]
+                  ]
+                },
+                "mode": "000755",
+                "owner": "root",
+                "group": "root"
+              },
+              "/opt/proxy-0-0-1.tgz": {
+                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/proxy-0-0-1.tgz",
+                "mode": "000644",
+                "owner": "root",
+                "group": "root"
+              },
+              "/opt/appConfiguartion.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -xe\n",
+                      "#\n",
+                      "# Download Node\n",
+                      "curl --silent --location https://rpm.nodesource.com/setup_7.x | bash -\n",
+                      "#\n",
+                      "# Install Node\n",
+                      "yum -y install nodejs\n",
+                      "#\n",
+                      "# Extract the proxy\n",
+                      "cd /opt\n",
+                      "tar -zxvf /opt/proxy-0-0-1.tgz\n",
+                      "#\n",
+                      "# Start the proxy\n",
+                      "node /opt/proxy/lib/Proxy.js -n ",
+                      {
+                        "Ref": "appConnectorName"
+                      },
+                      " -u ",
+                      {
+                        "Ref": "adminUsername"
+                      },
+                      " -w ",
+                      {
+                        "Ref": "adminPassword"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000755",
+                "owner": "root",
+                "group": "root"
+              }
+            },
+            "commands": {
+              "001-app-config": {
+                "command": {
+                  "Fn::Join": [
+                    " ",
+                    [
+                      "/opt/appConfiguartion.sh"
+                    ]
+                  ]
                 }
+              },
+              "002-signal-done": {
+                "command": {
+                  "Fn::Join": [
+                    " ",
+                    [
+                      "/opt/signalDone.sh"
+                    ]
+                  ]
+                }
+              }
             }
-        },
-        "Properties": {
-            "InstanceType": {
+          }
+        }
+      },
+      "Properties": {
+        "InstanceType": {
           "Ref": "appConnectorType"
         },
         "ImageId": {
@@ -593,15 +482,15 @@
                 "ln -s /usr/bin/cfn-send-cmd-event /opt/aws/bin/cfn-send-cmd-event\n",
                 "ln -s /usr/bin/cfn-send-cmd-result /opt/aws/bin/cfn-send-cmd-result\n",
                 "\n",
-                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-init -v ",
+                "/opt/aws/bin/cfn-init -v ",
                 " --stack ",
                 {
-                    "Ref": "AWS::StackName"
+                  "Ref": "AWS::StackName"
                 },
-                " --resource BIGIPInstance",
+                " --resource appConnectorInstance",
                 " --region ",
                 {
-                    "Ref": "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\n"
               ]
@@ -609,6 +498,23 @@
           }
         }
       }
+    },
+
+    "appConnectorWaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "appConnectorInstance",
+      "Properties": {
+        "Handle": {
+          "Ref": "appConnectorWaitHandle"
+        },
+        "Count": "1",
+        "Timeout": "1200"
+      }
+    },
+
+    "appConnectorWaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle",
+      "Properties": {}
     }
   },
 
