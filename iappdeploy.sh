@@ -60,6 +60,9 @@ fi
 # *** Please NOTE the "~" ...***
 #curl -skvv -u admin:admin -X GET -H "Content-Type: application/json" https://localhost/mgmt/tm/sys/application/service/~Common~iappname.app~iappname | jq . 
 
+# Curl command for application connector ... 
+#curl -sku tstanley:F5testnet -w "%{http_code}" -X POST -H "Content-Type: application/json" http://localhost:8080/proxy/v1/nodes -d '{"name":"appInstance2","ip":"10.10.20.54","port":"80","id":"i-0d0f3393a82b2144d","vpc":"vpc-1b701a7d"}'
+
 ## Create an RDP Pool for access to the Windows Server.
 
 pool_response_code=$(curl -sku ${user}:${passwd} -w "%{http_code}" -X POST -H "Content-Type: application/json" https://localhost:8443/mgmt/tm/ltm/pool -d '{"name":"rdp_pool","description":"rdp_pool","monitor":"/Common/tcp ","members":[{"name":"'"$ipAddress"':3389","address":"'"$ipAddress"'"}]}')

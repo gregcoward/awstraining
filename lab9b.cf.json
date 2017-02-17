@@ -10,6 +10,8 @@
           },
           "Parameters": [
             "appConnectorName",
+            "appInstance1Name",
+            "appInstance2Name",
             "KeyName",
             "adminUsername",
             "adminPassword"
@@ -44,6 +46,16 @@
     "appConnectorName": {
       "Description": "The name of the application connector.",
       "Type": "String"
+    },
+    "appInstance1Name": {
+      "Description": "The name of the application connector.",
+      "Type": "String",
+      "Default": "appInstance1"
+    },
+    "appInstance2Name": {
+      "Description": "The name of the application connector.",
+      "Type": "String",
+      "Default": "appInstance2"
     },
     "adminUsername": {
       "Type": "String",
@@ -340,7 +352,10 @@
     },
 
     "appConnectorInstance": {
-      "DependsOn": "ServerNATGateway",
+      "DependsOn": [
+        "appInstance1",
+        "appInstance2"
+      ],
       "Type": "AWS::EC2::Instance",
       "Metadata": {
         "AWS::CloudFormation::Init": {
@@ -400,7 +415,45 @@
                       {
                         "Ref": "adminPassword"
                       },
-                      "\n"
+                      "\n",
+                      "curl -sku ",
+                      {
+                        "Ref": "adminUsername"
+                      },
+                      ":",
+                      {
+                        "Ref": "adminPassword"
+                      },
+                      " -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" http://localhost:8080/proxy/v1/nodes -d '",
+                      "{\"name\":\"",
+                      { "Ref": "appInstance1Name" },
+                      "\",\"ip\":\"",
+                      { "Fn::GetAtt": [ "appInstance1", "PrivateIp" ] },
+                      "\",\"port\":\"80\",\"id\":\"",
+                      { "Ref": "appInstance1" },
+                      "\",\"vpc\":\"",
+                      { "Ref": "StackVPC" },
+                      "\",\"status\":\"disable\"}",
+                      "'\n",
+                      "curl -sku ",
+                      {
+                        "Ref": "adminUsername"
+                      },
+                      ":",
+                      {
+                        "Ref": "adminPassword"
+                      },
+                      " -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" http://localhost:8080/proxy/v1/nodes -d '",
+                      "{\"name\":\"",
+                      { "Ref": "appInstance2Name" },
+                      "\",\"ip\":\"",
+                      { "Fn::GetAtt": [ "appInstance2", "PrivateIp" ] },
+                      "\",\"port\":\"80\",\"id\":\"",
+                      { "Ref": "appInstance2" },
+                      "\",\"vpc\":\"",
+                      { "Ref": "StackVPC" },
+                      "\",\"status\":\"disable\"}",
+                      "'\n"
                     ]
                   ]
                 },
@@ -513,6 +566,334 @@
     },
 
     "appConnectorWaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle",
+      "Properties": {}
+    },
+
+    "appInstanceSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable connectivity from the other subnets",
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "-1",
+            "FromPort": "-1",
+            "ToPort": "-1",
+            "CidrIp": "10.10.0.0/16"
+          }
+        ]
+      }
+    },
+
+    "appInstance1": {
+      "DependsOn": "ServerNATGateway",
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+              "/opt/signalDone.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "/opt/aws/bin/cfn-signal -e $? '",
+                      {
+                        "Ref": "appConnectorWaitHandle"
+                      },
+                      "'\n"
+                    ]
+                  ]
+                },
+                "mode": "000755",
+                "owner": "root",
+                "group": "root"
+              },
+              "/opt/appConfiguartion.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -xe\n",
+                      "#\n",
+                      "yum clean all\n",
+                      "yum -y update\n",
+                      "yum -y install httpd\n",
+                      "systemctl start httpd\n",
+                      "systemctl enable httpd\n",
+                      "date\n",
+                      "echo $(systemctl status httpd)\n"
+                    ]
+                  ]
+                },
+                "mode": "000755",
+                "owner": "root",
+                "group": "root"
+              }
+            },
+            "commands": {
+              "001-app-config": {
+                "command": {
+                  "Fn::Join": [
+                    " ",
+                    [
+                      "/opt/appConfiguartion.sh"
+                    ]
+                  ]
+                }
+              },
+              "002-signal-done": {
+                "command": {
+                  "Fn::Join": [
+                    " ",
+                    [
+                      "/opt/signalDone.sh"
+                    ]
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "InstanceType": {
+          "Ref": "appConnectorType"
+        },
+        "ImageId": {
+          "Ref": "appConnectorAMI"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "internalSubnet"
+        },
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "appInstanceSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "#\n",
+                "cd /opt\n",
+                "curl -O https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+                "tar -xvpf aws-cfn-bootstrap-latest.tar.gz\n",
+                "cd aws-cfn-bootstrap-1.4/\n",
+                "python setup.py build\n",
+                "python setup.py install\n",
+                "ln -s /usr/init/redhat/cfn-hup /etc/init.d/cfn-hup\n",
+                "chmod 775 /usr/init/redhat/cfn-hup\n",
+                "cd /opt\n",
+                "mkdir aws\n",
+                "cd aws\n",
+                "mkdir bin\n",
+                "ln -s /usr/bin/cfn-hup /opt/aws/bin/cfn-hup\n",
+                "ln -s /usr/bin/cfn-init /opt/aws/bin/cfn-init\n",
+                "ln -s /usr/bin/cfn-signal /opt/aws/bin/cfn-signal\n",
+                "ln -s /usr/bin/cfn-elect-cmd-leader /opt/aws/bin/cfn-elect-cmd-leader\n",
+                "ln -s /usr/bin/cfn-get-metadata /opt/aws/bin/cfn-get-metadata\n",
+                "ln -s /usr/bin/cfn-send-cmd-event /opt/aws/bin/cfn-send-cmd-event\n",
+                "ln -s /usr/bin/cfn-send-cmd-result /opt/aws/bin/cfn-send-cmd-result\n",
+                "\n",
+                "/opt/aws/bin/cfn-init -v ",
+                " --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --resource appInstance1",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+
+    "appInstance1WaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "appInstance1",
+      "Properties": {
+        "Handle": {
+          "Ref": "appInstance1WaitHandle"
+        },
+        "Count": "1",
+        "Timeout": "1200"
+      }
+    },
+
+    "appInstance1WaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle",
+      "Properties": {}
+    },
+
+    "appInstance2": {
+      "DependsOn": "ServerNATGateway",
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+              "/opt/signalDone.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "/opt/aws/bin/cfn-signal -e $? '",
+                      {
+                        "Ref": "appConnectorWaitHandle"
+                      },
+                      "'\n"
+                    ]
+                  ]
+                },
+                "mode": "000755",
+                "owner": "root",
+                "group": "root"
+              },
+              "/opt/appConfiguartion.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -xe\n",
+                      "#\n",
+                      "yum clean all\n",
+                      "yum -y update\n",
+                      "yum -y install httpd\n",
+                      "systemctl start httpd\n",
+                      "systemctl enable httpd\n",
+                      "date\n",
+                      "echo $(systemctl status httpd)\n"
+                    ]
+                  ]
+                },
+                "mode": "000755",
+                "owner": "root",
+                "group": "root"
+              }
+            },
+            "commands": {
+              "001-app-config": {
+                "command": {
+                  "Fn::Join": [
+                    " ",
+                    [
+                      "/opt/appConfiguartion.sh"
+                    ]
+                  ]
+                }
+              },
+              "002-signal-done": {
+                "command": {
+                  "Fn::Join": [
+                    " ",
+                    [
+                      "/opt/signalDone.sh"
+                    ]
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "InstanceType": {
+          "Ref": "appConnectorType"
+        },
+        "ImageId": {
+          "Ref": "appConnectorAMI"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "internalSubnet"
+        },
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "appInstanceSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "#\n",
+                "cd /opt\n",
+                "curl -O https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+                "tar -xvpf aws-cfn-bootstrap-latest.tar.gz\n",
+                "cd aws-cfn-bootstrap-1.4/\n",
+                "python setup.py build\n",
+                "python setup.py install\n",
+                "ln -s /usr/init/redhat/cfn-hup /etc/init.d/cfn-hup\n",
+                "chmod 775 /usr/init/redhat/cfn-hup\n",
+                "cd /opt\n",
+                "mkdir aws\n",
+                "cd aws\n",
+                "mkdir bin\n",
+                "ln -s /usr/bin/cfn-hup /opt/aws/bin/cfn-hup\n",
+                "ln -s /usr/bin/cfn-init /opt/aws/bin/cfn-init\n",
+                "ln -s /usr/bin/cfn-signal /opt/aws/bin/cfn-signal\n",
+                "ln -s /usr/bin/cfn-elect-cmd-leader /opt/aws/bin/cfn-elect-cmd-leader\n",
+                "ln -s /usr/bin/cfn-get-metadata /opt/aws/bin/cfn-get-metadata\n",
+                "ln -s /usr/bin/cfn-send-cmd-event /opt/aws/bin/cfn-send-cmd-event\n",
+                "ln -s /usr/bin/cfn-send-cmd-result /opt/aws/bin/cfn-send-cmd-result\n",
+                "\n",
+                "/opt/aws/bin/cfn-init -v ",
+                " --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --resource appInstance2",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+
+    "appInstance2WaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "appInstance2",
+      "Properties": {
+        "Handle": {
+          "Ref": "appInstance2WaitHandle"
+        },
+        "Count": "1",
+        "Timeout": "1200"
+      }
+    },
+
+    "appInstance2WaitHandle": {
       "Type": "AWS::CloudFormation::WaitConditionHandle",
       "Properties": {}
     }
