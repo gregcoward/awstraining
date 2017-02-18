@@ -562,7 +562,7 @@
                       "#!/bin/bash\n",
                       "/opt/aws/bin/cfn-signal -e $? '",
                       {
-                        "Ref": "appConnectorWaitHandle"
+                        "Ref": "appInstance1WaitHandle"
                       },
                       "'\n"
                     ]
@@ -717,7 +717,7 @@
                       "#!/bin/bash\n",
                       "/opt/aws/bin/cfn-signal -e $? '",
                       {
-                        "Ref": "appConnectorWaitHandle"
+                        "Ref": "appInstance2WaitHandle"
                       },
                       "'\n"
                     ]
