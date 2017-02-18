@@ -352,10 +352,7 @@
     },
 
     "appConnectorInstance": {
-      "DependsOn": [
-        "appInstance1",
-        "appInstance2"
-      ],
+      "DependsOn": "ServerNATGateway",
       "Type": "AWS::EC2::Instance",
       "Metadata": {
         "AWS::CloudFormation::Init": {
@@ -415,45 +412,7 @@
                       {
                         "Ref": "adminPassword"
                       },
-                      "\n",
-                      "curl -sku ",
-                      {
-                        "Ref": "adminUsername"
-                      },
-                      ":",
-                      {
-                        "Ref": "adminPassword"
-                      },
-                      " -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" http://localhost:8080/proxy/v1/nodes -d '",
-                      "{\"name\":\"",
-                      { "Ref": "appInstance1Name" },
-                      "\",\"ip\":\"",
-                      { "Fn::GetAtt": [ "appInstance1", "PrivateIp" ] },
-                      "\",\"port\":\"80\",\"id\":\"",
-                      { "Ref": "appInstance1" },
-                      "\",\"vpc\":\"",
-                      { "Ref": "StackVPC" },
-                      "\",\"status\":\"disable\"}",
-                      "'\n",
-                      "curl -sku ",
-                      {
-                        "Ref": "adminUsername"
-                      },
-                      ":",
-                      {
-                        "Ref": "adminPassword"
-                      },
-                      " -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" http://localhost:8080/proxy/v1/nodes -d '",
-                      "{\"name\":\"",
-                      { "Ref": "appInstance2Name" },
-                      "\",\"ip\":\"",
-                      { "Fn::GetAtt": [ "appInstance2", "PrivateIp" ] },
-                      "\",\"port\":\"80\",\"id\":\"",
-                      { "Ref": "appInstance2" },
-                      "\",\"vpc\":\"",
-                      { "Ref": "StackVPC" },
-                      "\",\"status\":\"disable\"}",
-                      "'\n"
+                      "\n"
                     ]
                   ]
                 },
@@ -468,7 +427,7 @@
                   "Fn::Join": [
                     " ",
                     [
-                      "/opt/appConfiguartion.sh"
+                      "/opt/appConfiguartion.sh &>> /var/log/appconfig.log"
                     ]
                   ]
                 }
@@ -478,7 +437,7 @@
                   "Fn::Join": [
                     " ",
                     [
-                      "/opt/signalDone.sh"
+                      "/opt/signalDone.sh &>> /var/log/signal.log"
                     ]
                   ]
                 }
@@ -914,6 +873,40 @@
               ]
             },
             ":8080/"
+          ]
+        ]
+      }
+    },
+    "appInstance1": {
+      "Description": "The information required to add this instance as a node in the Applicaiton Connector.",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            { "Ref": "appInstance1" },
+            "##",            
+            { "Ref": "StackVPC" },
+            "##",
+            { "Fn::GetAtt": [ "appInstance1", "PrivateIp" ] },
+            "##",
+            { "Ref": "appInstance1Name" }                        
+          ]
+        ]
+      }
+    },
+    "appInstance2": {
+      "Description": "The information required to add this instance as a node in the Applicaiton Connector.",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            { "Ref": "appInstance1" },
+            "##",            
+            { "Ref": "StackVPC" },
+            "##",
+            { "Fn::GetAtt": [ "appInstance1", "PrivateIp" ] },
+            "##",
+            { "Ref": "appInstance1Name" }                        
           ]
         ]
       }
