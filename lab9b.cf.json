@@ -859,13 +859,13 @@
         "Fn::Join": [
           "",
           [
-            { "Ref": "appInstance1" },
+            { "Ref": "appInstance2" },
             "##",            
             { "Ref": "StackVPC" },
             "##",
-            { "Fn::GetAtt": [ "appInstance1", "PrivateIp" ] },
+            { "Fn::GetAtt": [ "appInstance2", "PrivateIp" ] },
             "##",
-            { "Ref": "appInstance1Name" }                        
+            { "Ref": "appInstance2Name" }                        
           ]
         ]
       }
