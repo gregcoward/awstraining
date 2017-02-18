@@ -400,7 +400,7 @@
                       "tar -zxvf /opt/proxy-0-0-1.tgz\n",
                       "#\n",
                       "# Start the proxy\n",
-                      "node /opt/proxy/lib/Proxy.js -n ",
+                      "nohup node /opt/proxy/lib/Proxy.js -n ",
                       {
                         "Ref": "appConnectorName"
                       },
@@ -412,7 +412,8 @@
                       {
                         "Ref": "adminPassword"
                       },
-                      "\n"
+                      " &\n",
+                      "exit\n"
                     ]
                   ]
                 },
@@ -423,24 +424,10 @@
             },
             "commands": {
               "001-app-config": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "/opt/appConfiguartion.sh &>> /var/log/appconfig.log"
-                    ]
-                  ]
-                }
+                "command": "/opt/appConfiguartion.sh &>> /var/log/appconfig.log"
               },
               "002-signal-done": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "/opt/signalDone.sh &>> /var/log/signal.log"
-                    ]
-                  ]
-                }
+                "command": "/opt/signalDone.sh &>> /var/log/signal.log"
               }
             }
           }
@@ -596,24 +583,10 @@
             },
             "commands": {
               "001-app-config": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "/opt/appConfiguartion.sh"
-                    ]
-                  ]
-                }
+                "command": "/opt/appConfiguartion.sh &>> /var/log/appconfig.log"
               },
               "002-signal-done": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "/opt/signalDone.sh"
-                    ]
-                  ]
-                }
+                "command": "/opt/signalDone.sh &>> /var/log/signal.log"
               }
             }
           }
@@ -751,24 +724,10 @@
             },
             "commands": {
               "001-app-config": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "/opt/appConfiguartion.sh"
-                    ]
-                  ]
-                }
+                "command": "/opt/appConfiguartion.sh &>> /var/log/appconfig.log"
               },
               "002-signal-done": {
-                "command": {
-                  "Fn::Join": [
-                    " ",
-                    [
-                      "/opt/signalDone.sh"
-                    ]
-                  ]
-                }
+                "command": "/opt/signalDone.sh &>> /var/log/signal.log"
               }
             }
           }
