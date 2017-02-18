@@ -437,6 +437,12 @@
         "InstanceType": {
           "Ref": "appConnectorType"
         },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": { "Ref": "appConnectorName" }
+          }
+        ],
         "ImageId": {
           "Ref": "appConnectorAMI"
         },
@@ -596,6 +602,12 @@
         "InstanceType": {
           "Ref": "appConnectorType"
         },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": { "Ref": "appInstance1Name" }
+          }
+        ],
         "ImageId": {
           "Ref": "appConnectorAMI"
         },
@@ -737,6 +749,12 @@
         "InstanceType": {
           "Ref": "appConnectorType"
         },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": { "Ref": "appInstance2Name" }
+          }
+        ],
         "ImageId": {
           "Ref": "appConnectorAMI"
         },
