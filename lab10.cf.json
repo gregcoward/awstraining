@@ -547,7 +547,7 @@
                                             "--file /config/cloud/aws/rm-password.sh",
                                             "-o /var/log/rm-password.log",
                                             "--log-level debug",
-                                            "--wait-for CUSTOM_CONFIG_DONE",
+                                            "--wait-for APP_CONFIG_DONE",
                                             "--signal PASSWORD_REMOVED",
                                             "&>> /var/log/cloudlibs-install.log < /dev/null &"
                                         ]
@@ -564,7 +564,7 @@
                                             "--file /config/cloud/aws/signalDone.sh",
                                             "--cwd /config/cloud/aws",
                                             "-o /var/log/signlDone.log",
-                                            "--wait-for APP_CONFIG_DONE",
+                                            "--wait-for PASSWORD_REMOVED",
                                             "--background",
                                             "&>> /var/log/cloudlibs-install.log &"
                                         ]
