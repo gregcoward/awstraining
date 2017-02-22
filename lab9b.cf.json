@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single CentOS 7 server then uploads the App Connector tarball and finally starts App Connector.",
+  "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single CentOS 7 server then uploads the App Connector tarball and starts the App Connector, finally this template creates two CentOS 7 Apache content servers.",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -437,12 +437,6 @@
         "InstanceType": {
           "Ref": "appConnectorType"
         },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": { "Ref": "appConnectorName" }
-          }
-        ],
         "ImageId": {
           "Ref": "appConnectorAMI"
         },
@@ -602,12 +596,6 @@
         "InstanceType": {
           "Ref": "appConnectorType"
         },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": { "Ref": "appInstance1Name" }
-          }
-        ],
         "ImageId": {
           "Ref": "appConnectorAMI"
         },
@@ -749,12 +737,6 @@
         "InstanceType": {
           "Ref": "appConnectorType"
         },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": { "Ref": "appInstance2Name" }
-          }
-        ],
         "ImageId": {
           "Ref": "appConnectorAMI"
         },
@@ -836,7 +818,7 @@
   },
 
   "Outputs": {
-    "ServerURL": {
+    "AppConnectorURL": {
       "Description": "The URL to connect to the Application Connector.",
       "Value": {
         "Fn::Join": [
