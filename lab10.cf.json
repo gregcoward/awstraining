@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single server of Microsoft Windows Server 2012 R2, and then finally configures IIS.",
+    "Description": "This template creates a BIG-IP with 3 NIC's and puts it into an existing VPC, and subnets.",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
@@ -73,6 +73,22 @@
             ],
             "ConstraintDescription": "Choose one of these."
         },
+        "VPCId":{
+            "Type": "AWS::EC2::VPC::Id",
+            "Description": "The VPC containing the Subnets"
+        },
+        "BIGIPMgmtSubnet": {
+            "Description": "EC2 instance type",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "BIGIPExternalSubnet": {
+            "Description": "EC2 instance type",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "BIGIPInternalSubnet": {
+            "Description": "EC2 instance type",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
         "BIGIPAMI": {
             "Description": "F5 BIG-IP AMI to install from.",
             "Type": "String",
@@ -84,159 +100,13 @@
         }
     },
     "Resources": {
-        "StackVPC": {
-            "Type": "AWS::EC2::VPC",
-            "Properties": {
-                "EnableDnsSupport": "true",
-                "EnableDnsHostnames": "true",
-                "CidrBlock": "10.10.0.0/16",
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "VPC-",
-                                    {
-                                        "Ref": "AWS::StackName"
-                                    }
-                                ]
-                            ]
-                        }
-                    }
-                ]
-            }
-        },
-
-        "ExternalSubnet": {
-            "Type": "AWS::EC2::Subnet",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "StackVPC"
-                },
-                "AvailabilityZone": {
-                    "Fn::Join": [
-                        "",
-                        [
-                            {
-                                "Ref": "AWS::Region"
-                            },
-                            "a"
-                        ]
-                    ]
-                },
-                "CidrBlock": "10.10.20.0/24",
-                "MapPublicIpOnLaunch": true,
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "ExternalSubnet-",
-                                    {
-                                        "Ref": "AWS::StackName"
-                                    }
-                                ]
-                            ]
-                        }
-                    }
-                ]
-            }
-        },
-
-        "StackInternetGateway": {
-            "Type": "AWS::EC2::InternetGateway",
-            "Properties": {
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "InternetGateway-",
-                                    {
-                                        "Ref": "AWS::StackName"
-                                    }
-                                ]
-                            ]
-                        }
-                    }
-                ]
-            }
-        },
-
-        "AttachGateway": {
-            "Type": "AWS::EC2::VPCGatewayAttachment",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "StackVPC"
-                },
-                "InternetGatewayId": {
-                    "Ref": "StackInternetGateway"
-                }
-            }
-        },
-
-        "ExternalRouteTable": {
-            "Type": "AWS::EC2::RouteTable",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "StackVPC"
-                },
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "ExternalRouteTable-",
-                                    {
-                                        "Ref": "AWS::StackName"
-                                    }
-                                ]
-                            ]
-                        }
-                    }
-                ]
-            }
-        },
-
-        "ExternalRoute": {
-            "Type": "AWS::EC2::Route",
-            "Properties": {
-                "RouteTableId": {
-                    "Ref": "ExternalRouteTable"
-                },
-                "DestinationCidrBlock": "0.0.0.0/0",
-                "GatewayId": {
-                    "Ref": "StackInternetGateway"
-                }
-            }
-        },
-
-        "ExternalSubnetRouteTableAssociation": {
-            "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Properties": {
-                "SubnetId": {
-                    "Ref": "ExternalSubnet"
-                },
-                "RouteTableId": {
-                    "Ref": "ExternalRouteTable"
-                }
-            }
-        },
 
         "BIGIPSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
                 "GroupDescription": "Enable HTTP and RDP",
                 "VpcId": {
-                    "Ref": "StackVPC"
+                    "Ref": "VPCId"
                 },
                 "SecurityGroupIngress": [
                     {
@@ -273,8 +143,94 @@
             }
         },
 
+        "BIGIPMgmtEip": {
+            "Type": "AWS::EC2::EIP"
+        },
+
+        "BIGIPMgmtEipAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "BIGIPMgmtEip",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": { "Ref": "BigipMGMTInterface" },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "BigipMGMTInterface",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            }
+        },
+
+        "BIGIPExternalEip": {
+            "Type": "AWS::EC2::EIP"
+        },
+
+        "BIGIPExternalEipAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "BIGIPExternalEip",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": { "Ref": "BigipExternalInterface" },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "BigipExternalInterface",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            }
+        },
+
+        "BigipExternalInterface": {
+            "Properties": {
+                "Description": "Public External Interface for the BIG-IP",
+                "GroupSet": [
+                    {
+                        "Ref": "BIGIPSecurityGroup"
+                    }
+                ],
+                "SecondaryPrivateIpAddressCount": "1",
+                "SubnetId": {
+                    "Ref": "BIGIPExternalSubnet"
+                }                
+            },
+            "Type": "AWS::EC2::NetworkInterface"
+        },
+
+        "BigipInternalInterface": {
+            "Properties": {
+                "Description": "Internal Interface for the BIG-IP",
+                "SubnetId": {
+                    "Ref": "BIGIPInternalSubnet"
+                }
+            },
+            "Type": "AWS::EC2::NetworkInterface"
+        },
+
+        "BigipMGMTInterface": {
+            "Properties": {
+                "Description": "MGMT Interface for the BIG-IP",
+                "GroupSet": [
+                    {
+                        "Ref": "BIGIPSecurityGroup"
+                    }
+                ],
+                "SubnetId": {
+                    "Ref": "BIGIPMgmtSubnet"
+                }                
+            },
+            "Type": "AWS::EC2::NetworkInterface"
+        },
+
         "BIGIPInstance": {
-            "DependsOn": "ExternalSubnetRouteTableAssociation",
             "Type": "AWS::EC2::Instance",
             "Metadata": {
                 "AWS::CloudFormation::Init": {
@@ -306,12 +262,6 @@
                             },
                             "/config/cloud/f5-cloud-libs.tar.gz": {
                                 "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.0.1/dist/f5-cloud-libs.tar.gz",
-                                "mode": "000644",
-                                "owner": "root",
-                                "group": "root"
-                            },
-                            "/config/cloud/app-connector-0.0.1-53.noarch.rpm": {
-                                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/app-connector-0.0.1-53.noarch.rpm",
                                 "mode": "000644",
                                 "owner": "root",
                                 "group": "root"
@@ -405,11 +355,11 @@
                                         [
                                             "#!/bin/bash\n",
                                             "date\n",
-                                            "echo 'Starting BIG-IP Service Center Installation'\n",
-                                            "rpm -Uvh app-connector-0.0.1-53.noarch.rpm\n",
+                                            "echo 'Turning on iAppsLX'\n",
                                             "touch /var/config/rest/iapps/enable\n",
                                             "date\n",
-                                            "echo 'BIG-IP Service Center Installation Done'\n"
+                                            "echo 'Done turning on iAppsLX'\n",
+                                            "exit\n"
                                         ]
                                     ]
                                 },
@@ -429,16 +379,7 @@
                                 "command": {
                                     "Fn::Join": [
                                         " ",
-                                        [
-                                            "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
-                                            "--file /config/cloud/aws/f5-cloud-libs/scripts/aws/1nicSetup.sh",
-                                            "--cwd /config/cloud/aws/f5-cloud-libs/scripts/aws",
-                                            "-o /var/log/1nicSetup.log",
-                                            "--signal 1_NIC_SETUP_DONE",
-                                            "--background",
-                                            "&>> /var/log/cloudlibs-install.log &"
-                                        ]
+                                        []
                                     ]
                                 }
                             },
@@ -456,7 +397,6 @@
                                             },
                                             "'",
                                             " --signal CREATEUSER_DONE",
-                                            " --wait-for 1_NIC_SETUP_DONE",
                                             " --log-level verbose",
                                             " -o /var/log/createUser.log",
                                             " --background",
@@ -549,15 +489,21 @@
                 "KeyName": {
                     "Ref": "KeyName"
                 },
-                "SubnetId": {
-                    "Ref": "ExternalSubnet"
-                },
-                "SecurityGroupIds": [
+                "NetworkInterfaces": [
                     {
-                        "Fn::GetAtt": [
-                            "BIGIPSecurityGroup",
-                            "GroupId"
-                        ]
+                        "Description": "Public or External Interface",
+                        "DeviceIndex": "1",
+                        "NetworkInterfaceId": { "Ref": "BigipExternalInterface" }
+                    },
+                    {
+                        "Description": "Internal Interface",
+                        "DeviceIndex": "2",
+                        "NetworkInterfaceId": { "Ref": "BigipInternalInterface" }
+                    },
+                    {
+                        "Description": "MGMT Interface",
+                        "DeviceIndex": "0",
+                        "NetworkInterfaceId": { "Ref": "BigipMGMTInterface" }
                     }
                 ],
                 "UserData": {
