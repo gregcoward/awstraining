@@ -11,8 +11,7 @@
                     "Parameters": [
                         "BIGIPName",
                         "KeyName",
-                        "adminUsername",
-                        "adminPassword"
+                        "adminUsername"
                     ]
                 },
                 {
@@ -30,6 +29,17 @@
                     "Parameters": [
                         "BIGIPAMI"
                     ]
+                },
+                {
+                    "Label": {
+                        "default": "Connectivity"
+                    },
+                    "Parameters": [
+                        "VPCId",
+                        "BIGIPMgmtSubnet",
+                        "BIGIPExternalSubnet",
+                        "BIGIPInternalSubnet"
+                    ]
                 }
             ],
             "ParameterLabels": {}
@@ -44,13 +54,6 @@
         "adminUsername": {
             "Type": "String",
             "Description": "An admin username for loging into the Windows Server and BIG-IP.",
-            "MaxLength": "255",
-            "MinLength": "1"
-        },
-        "adminPassword": {
-            "Type": "String",
-            "NoEcho": "true",
-            "Description": "A password that will be used to login to the Windows Server and BIG-IP.",
             "MaxLength": "255",
             "MinLength": "1"
         },
@@ -501,6 +504,7 @@
                                             "nohup /config/waitThenRun.sh",
                                             "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/onboard.js",
                                             "--wait-for ADMIN_CREATED",
+                                            "--signal ONBOARD_DONE",
                                             "-o /var/log/onboard.log",
                                             "--log-level debug",
                                             "--no-reboot",
@@ -525,7 +529,7 @@
                                         " ",
                                         [
                                             "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
                                             "--file /config/cloud/aws/appConfiguartion.sh",
                                             "--cwd /config/cloud/aws",
                                             "-o /var/log/appConfiguartion.log",
@@ -560,7 +564,7 @@
                                         " ",
                                         [
                                             "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/f5-cloud-libs/scripts/runScript.js",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
                                             "--file /config/cloud/aws/signalDone.sh",
                                             "--cwd /config/cloud/aws",
                                             "-o /var/log/signlDone.log",
@@ -653,7 +657,7 @@
                         "https://",
                         {
                             "Fn::GetAtt": [
-                                "BIGIPInstance",
+                                "BigipMGMTInterface",
                                 "PublicDnsName"
                             ]
                         },
