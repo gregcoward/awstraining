@@ -11,7 +11,8 @@
                     "Parameters": [
                         "BIGIPName",
                         "KeyName",
-                        "adminUsername"
+                        "adminUsername",
+                        "adminPassword"
                     ]
                 },
                 {
@@ -53,7 +54,13 @@
         },
         "adminUsername": {
             "Type": "String",
-            "Description": "An admin username for loging into the Windows Server and BIG-IP.",
+            "Description": "An admin username for loging into the BIG-IP.",
+            "MaxLength": "255",
+            "MinLength": "1"
+        },
+        "adminPassword": {
+            "Type": "String",
+            "Description": "An admin password for loging into the BIG-IP.",
             "MaxLength": "255",
             "MinLength": "1"
         },
@@ -242,11 +249,13 @@
                             "/config/cloud/aws/createUser.sh": {
                                 "content": {
                                     "Fn::Join": [
-                                        "\n",
+                                        "",
                                         [
-                                            "#!/bin/bash",
-                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword",
-                                            "PASSWORD=$(/bin/sed -e $'s:[\\'\"%{};/|#\\x20\\\\\\\\]:\\\\\\\\&:g' < /config/cloud/aws/.adminPassword)",
+                                            "#!/bin/bash\n",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword\n",
+                                            "#PASSWORD=$(/bin/sed -e $'s:[\\'\"%{};/|#\\x20\\\\\\\\]:\\\\\\\\&:g' < /config/cloud/aws/.adminPassword)",
+                                            "PASSWORD=",
+                                            { "Ref": "adminPassword" },
                                             "if [ \"$1\" = admin ]; then",
                                             "    tmsh modify auth user \"$1\" password ${PASSWORD}",
                                             "else",
@@ -512,7 +521,8 @@
                                             "--no-reboot",
                                             "--host localhost",
                                             "--user admin",
-                                            "--password-url file:///config/cloud/aws/.adminPassword",
+                                            "--password",
+                                            {"Ref": "adminPassword"},
                                             "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
                                             "--ntp 0.us.pool.ntp.org",
                                             "--ntp 1.us.pool.ntp.org",
@@ -539,7 +549,8 @@
                                             "--no-reboot",
                                             "--host localhost",
                                             "--user admin",
-                                            "--password-url file:///config/cloud/aws/.adminPassword",
+                                            "--password",
+                                            {"Ref": "adminPassword"},
                                             "--multi-nic",
                                             "--vlan External, 1.1",
                                             "--vlan Internal, 1.2",
@@ -576,16 +587,7 @@
                                 "command": {
                                     "Fn::Join": [
                                         " ",
-                                        [
-                                            "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
-                                            "--file /config/cloud/aws/rm-password.sh",
-                                            "-o /var/log/rm-password.log",
-                                            "--log-level debug",
-                                            "--wait-for APP_CONFIG_DONE",
-                                            "--signal PASSWORD_REMOVED",
-                                            "&>> /var/log/cloudlibs-install.log < /dev/null &"
-                                        ]
+                                        []
                                     ]
                                 }
                             },
@@ -599,7 +601,7 @@
                                             "--file /config/cloud/aws/signalDone.sh",
                                             "--cwd /config/cloud/aws",
                                             "-o /var/log/signlDone.log",
-                                            "--wait-for PASSWORD_REMOVED",
+                                            "--wait-for APP_CONFIG_DONE",
                                             "--background",
                                             "&>> /var/log/cloudlibs-install.log &"
                                         ]
