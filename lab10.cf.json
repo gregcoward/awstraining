@@ -487,7 +487,9 @@
                                             " f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
                                             " --signal ADMIN_CREATED",
                                             " --file /config/cloud/aws/createUser.sh",
-                                            " --cl-args admin",
+                                            " --cl-args '",
+                                            { "Ref": "adminUsername" },
+                                            "'",
                                             " --log-level debug",
                                             " -o /var/log/createUser.log",
                                             " &>> /var/log/cloudlibs-install.log < /dev/null &"
@@ -657,14 +659,26 @@
                         "https://",
                         {
                             "Fn::GetAtt": [
-                                "BigipMGMTInterface",
+                                "BIGIPInstance",
                                 "PublicDnsName"
                             ]
                         },
-                        ":8443/"
+                        "/"
                     ]
                 ]
             }
+        },
+        "PublicSelfIp": {
+            "Description": "The BIG-IP MGMT URL.",
+            "Value": { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"]}
+        },
+        "PublicVipIp": {
+            "Description": "The BIG-IP MGMT URL.",
+            "Value": { "Fn::Select": ["0", {"Fn::GetAtt": ["BigipExternalInterface","SecondaryPrivateIpAddresses"]}]}
+        },
+        "PrivateSelfIp": {
+            "Description": "The BIG-IP MGMT URL.",
+            "Value": { "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"]}
         }
     }
 }
