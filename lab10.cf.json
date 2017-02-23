@@ -525,7 +525,36 @@
                                     ]
                                 }
                             },
-                            "006-app-config": {
+                            "006-network-config": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/network.js",                                            
+                                            "-o /var/log/networkConfig.log",
+                                            "--log-level debug",
+                                            "--wait-for ONBOARD_DONE",
+                                            "--signal NETWORK_CONFIG_DONE",
+                                            "--no-reboot",
+                                            "--host localhost",
+                                            "--user admin",
+                                            "--password-url file:///config/cloud/aws/.adminPassword",
+                                            "--multi-nic",
+                                            "--vlan External, 1.1",
+                                            "--vlan Internal, 1.2",
+                                            "--self-ip external_self_ip, ", 
+                                            { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"] },
+                                            ", External",
+                                            "--self-ip internal_self_ip, ", 
+                                            { "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"] },
+                                            ", Internal",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "007-app-config": {
                                 "command": {
                                     "Fn::Join": [
                                         " ",
@@ -535,7 +564,7 @@
                                             "--file /config/cloud/aws/appConfiguartion.sh",
                                             "--cwd /config/cloud/aws",
                                             "-o /var/log/appConfiguartion.log",
-                                            "--wait-for ONBOARD_DONE",
+                                            "--wait-for NETWORK_CONFIG_DONE",
                                             "--signal APP_CONFIG_DONE",
                                             "--background",
                                             "&>> /var/log/cloudlibs-install.log &"
@@ -543,7 +572,7 @@
                                     ]
                                 }
                             },
-                            "007-rm-password": {
+                            "008-rm-password": {
                                 "command": {
                                     "Fn::Join": [
                                         " ",
@@ -560,7 +589,7 @@
                                     ]
                                 }
                             },
-                            "008-signal-done": {
+                            "009-signal-done": {
                                 "command": {
                                     "Fn::Join": [
                                         " ",
