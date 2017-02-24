@@ -60,6 +60,7 @@
         },
         "adminPassword": {
             "Type": "String",
+            "NoEcho": "true",
             "Description": "An admin password for loging into the BIG-IP.",
             "MaxLength": "255",
             "MinLength": "1"
@@ -94,6 +95,11 @@
         "BIGIPExternalSubnet": {
             "Description": "EC2 instance type",
             "Type": "AWS::EC2::Subnet::Id"
+        },
+        "DataPlaneExternalDefautlGatewayAddress": {
+            "Description": "The default gateway address of the External Subnet, usually the .1 of a /24 network.",
+            "Default": "10.10.10.1",
+            "Type": "String"
         },
         "BIGIPInternalSubnet": {
             "Description": "EC2 instance type",
@@ -546,21 +552,21 @@
                                             "-o /var/log/networkConfig.log",
                                             "--log-level debug",
                                             "--wait-for ONBOARD_DONE",
-                                            "--signal NETWORK_CONFIG_DONE",
-                                            "--no-reboot",
+                                            "--signal NETWORK_CONFIG_DONE",                                            
                                             "--host localhost",
                                             "--user admin",
                                             "--password",
                                             {"Ref": "adminPassword"},
-                                            "--multi-nic",
-                                            "--vlan External, 1.1",
-                                            "--vlan Internal, 1.2",
-                                            "--self-ip external_self_ip, ", 
+                                            "--default-gw",
+                                            {"Ref": "DataPlaneExternalDefautlGatewayAddress"},
+                                            "--vlan 'External, 1.1'",
+                                            "--vlan 'Internal, 1.2'",
+                                            "--self-ip 'external_self_ip, ", 
                                             { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"] },
-                                            ", External",
-                                            "--self-ip internal_self_ip, ", 
+                                            ", External'",
+                                            "--self-ip 'internal_self_ip, ", 
                                             { "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"] },
-                                            ", Internal",
+                                            ", Internal'",
                                             "&>> /var/log/cloudlibs-install.log &"
                                         ]
                                     ]
@@ -672,7 +678,7 @@
                     "Ref": "BIGIPWaitHandle"
                 },
                 "Count": "1",
-                "Timeout": "1200"
+                "Timeout": "1800"
             }
         },
 
