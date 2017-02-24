@@ -39,6 +39,7 @@
                         "VPCId",
                         "BIGIPMgmtSubnet",
                         "BIGIPExternalSubnet",
+                        "DataPlaneExternalDefautlGatewayAddress",
                         "BIGIPInternalSubnet"
                     ]
                 }
@@ -705,18 +706,6 @@
                     ]
                 ]
             }
-        },
-        "PublicSelfIp": {
-            "Description": "The BIG-IP MGMT URL.",
-            "Value": { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"]}
-        },
-        "PublicVipIp": {
-            "Description": "The BIG-IP MGMT URL.",
-            "Value": { "Fn::Select": ["0", {"Fn::GetAtt": ["BigipExternalInterface","SecondaryPrivateIpAddresses"]}]}
-        },
-        "PrivateSelfIp": {
-            "Description": "The BIG-IP MGMT URL.",
-            "Value": { "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"]}
         }
     }
 }
