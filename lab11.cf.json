@@ -9,12 +9,11 @@
                         "default": "Basics"
                     },
                     "Parameters": [
-                        "appConnectorName",
-                        "appInstance1Name",
-                        "appInstance2Name",
                         "KeyName",
                         "adminUsername",
-                        "adminPassword"
+                        "adminPassword",
+                        "KopsInstanceName",
+                        "BIGIPName"
                     ]
                 },
                 {
@@ -22,7 +21,8 @@
                         "default": "Size"
                     },
                     "Parameters": [
-                        "appConnectorType"
+                        "KopsInstanceType",
+                        "BIGIPInstanceType"
                     ]
                 },
                 {
@@ -30,7 +30,8 @@
                         "default": "Settings"
                     },
                     "Parameters": [
-                        "appConnectorAMI"
+                        "KopsInstanceAMI",
+                        "BIGIPAMI"
                     ]
                 }
             ],
@@ -64,12 +65,14 @@
         "KopsInstanceType": {
             "Description": "EC2 instance type",
             "Type": "String",
-            "Default": "t2.micro",
+            "Default": "t2.medium",
             "AllowedValues": [
                 "t1.micro",
                 "t2.micro",
                 "t2.small",
-                "m1.small"
+                "t2.medium",
+                "m1.small",
+                "m3.medium"
             ],
             "ConstraintDescription": "Choose one of the following."
         },
@@ -79,7 +82,31 @@
             "Default": "ami-d2c924b2",
             "AllowedValues": [
                 "ami-d2c924b2",
-                "ami-6d1c2007"
+                "ami-6d1c2007",
+                "ami-6a2d760f"
+            ]
+        },
+        "BIGIPName": {
+            "Description": "The name of the BIG-IP.",
+            "Type": "String"
+        },
+        "BIGIPInstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m4.xlarge",
+            "AllowedValues": [
+                "m4.xlarge"
+            ],
+            "ConstraintDescription": "Choose one of these."
+        },
+        "BIGIPAMI": {
+            "Description": "F5 BIG-IP AMI to install from.",
+            "Type": "String",
+            "Default": "ami-8633efe6",
+            "AllowedValues": [
+                "ami-8633efe6",
+                "ami-0b7a011c",
+                "ami-25002540"
             ]
         }
     },
@@ -108,7 +135,7 @@
                 ]
             }
         },
-        "MgmtSubnet": {
+        "mgmtSubnet": {
             "Type": "AWS::EC2::Subnet",
             "Properties": {
                 "VpcId": {
@@ -277,7 +304,7 @@
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Properties": {
                 "SubnetId": {
-                    "Ref": "MgmtSubnet"
+                    "Ref": "mgmtSubnet"
                 },
                 "RouteTableId": {
                     "Ref": "MgmtRouteTable"
@@ -378,6 +405,630 @@
                 }
             }
         },
+        "BIGIPSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable HTTP and RDP",
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8443",
+                        "ToPort": "8443",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "BIGIPMgmtEip": {
+            "Type": "AWS::EC2::EIP"
+        },
+        "BIGIPMgmtEipAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "BIGIPMgmtEip",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "BigipMGMTInterface"
+                },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "BigipMGMTInterface",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            }
+        },
+        "BIGIPExternalEip": {
+            "Type": "AWS::EC2::EIP"
+        },
+        "BIGIPExternalEipAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "BIGIPExternalEip",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "BigipExternalInterface"
+                },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "BigipExternalInterface",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            }
+        },
+        "BigipExternalInterface": {
+            "Properties": {
+                "Description": "Public External Interface for the BIG-IP",
+                "GroupSet": [
+                    {
+                        "Ref": "BIGIPSecurityGroup"
+                    }
+                ],
+                "SecondaryPrivateIpAddressCount": "1",
+                "SubnetId": {
+                    "Ref": "externalSubnet"
+                }
+            },
+            "Type": "AWS::EC2::NetworkInterface"
+        },
+        "BigipInternalInterface": {
+            "Properties": {
+                "Description": "Internal Interface for the BIG-IP",
+                "SubnetId": {
+                    "Ref": "internalSubnet"
+                }
+            },
+            "Type": "AWS::EC2::NetworkInterface"
+        },
+        "BigipMGMTInterface": {
+            "Properties": {
+                "Description": "MGMT Interface for the BIG-IP",
+                "GroupSet": [
+                    {
+                        "Ref": "BIGIPSecurityGroup"
+                    }
+                ],
+                "SubnetId": {
+                    "Ref": "mgmtSubnet"
+                }
+            },
+            "Type": "AWS::EC2::NetworkInterface"
+        },
+        "BIGIPInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "config": {
+                        "files": {
+                            "/config/cloud/aws/createUser.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "#f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/generatePassword --file /config/cloud/aws/.adminPassword\n",
+                                            "#PASSWORD=$(/bin/sed -e $'s:[\\'\"%{};/|#\\x20\\\\\\\\]:\\\\\\\\&:g' < /config/cloud/aws/.adminPassword)\n",
+                                            "PASSWORD=",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            "\n",
+                                            "if [ \"$1\" = admin ]; then\n",
+                                            "    tmsh modify auth user \"$1\" password ${PASSWORD}\n",
+                                            "else\n",
+                                            "    tmsh create auth user \"$1\" password ${PASSWORD} shell bash partition-access replace-all-with { all-partitions { role admin } }\n",
+                                            "fi\n"
+                                        ]
+                                    ]
+                                },
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root"
+                            },  
+                            "/config/cloud/aws/rm-password.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "date\n",
+                                            "echo 'starting rm-password.sh'\n",
+                                            "rm /config/cloud/aws/.adminPassword\n",
+                                            "date\n"
+                                        ]
+                                    ]
+                                },
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root"
+                            },
+                            "/config/cloud/f5-cloud-libs-aws.tar.gz": {
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root",
+                                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs-aws/v1.0.1/dist/f5-cloud-libs-aws.tar.gz"
+                            },
+                            "/config/cloud/f5-cloud-libs.tar.gz": {
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root",
+                                "source": "https://raw.githubusercontent.com/F5Networks/f5-cloud-libs/v2.1.0/dist/f5-cloud-libs.tar.gz"
+                            },
+                            "/config/getNameServer.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "INTERFACE=$1",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "INTERFACE_MAC=`ifconfig ${INTERFACE} | egrep HWaddr | awk '{print tolower($5)}'`",
+                                            "VPC_CIDR_BLOCK=`curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${INTERFACE_MAC}/vpc-ipv4-cidr-block`",
+                                            "VPC_NET=${VPC_CIDR_BLOCK%/*}",
+                                            "NAME_SERVER=`echo ${VPC_NET} | awk -F. '{ printf \"%d.%d.%d.%d\", $1, $2, $3, $4+2 }'`",
+                                            "echo $NAME_SERVER"
+                                        ]
+                                    ]
+                                },
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root"
+                            },
+                            "/config/installCloudLibs.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash",
+                                            "echo about to execute",
+                                            "checks=0",
+                                            "while [ $checks -lt 120 ]; do echo checking mcpd",
+                                            "    tmsh -a show sys mcp-state field-fmt | grep -q running",
+                                            "    if [ $? == 0 ]; then",
+                                            "        echo mcpd ready",
+                                            "        break",
+                                            "    fi",
+                                            "    echo mcpd not ready yet",
+                                            "    let checks=checks+1",
+                                            "    sleep 10",
+                                            "done",
+                                            "echo loading verifyHash script",
+                                            "if ! tmsh load sys config merge file /config/verifyHash; then",
+                                            "    echo cannot validate signature of /config/verifyHash",
+                                            "    exit",
+                                            "fi",
+                                            "echo loaded verifyHash",
+                                            "declare -a filesToVerify=(\"/config/cloud/f5-cloud-libs.tar.gz\" \"/config/cloud/f5-cloud-libs-aws.tar.gz\")",
+                                            "for fileToVerify in \"${filesToVerify[@]}\"",
+                                            "do",
+                                            "    echo verifying \"$fileToVerify\"",
+                                            "    if ! tmsh run cli script verifyHash \"$fileToVerify\"; then",
+                                            "        echo \"$fileToVerify\" is not valid",
+                                            "        exit 1",
+                                            "    fi",
+                                            "    echo verified \"$fileToVerify\"",
+                                            "done",
+                                            "mkdir -p /config/cloud/aws/node_modules",
+                                            "echo expanding f5-cloud-libs.tar.gz",
+                                            "tar xvfz /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud/aws/node_modules",
+                                            "touch /config/cloud/cloudLibsReady"
+                                        ]
+                                    ]
+                                },
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root"
+                            },
+                            "/config/verifyHash": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "cli script /Common/verifyHash {",
+                                            "    proc script::run {} {",
+                                            "        if {[catch {",
+                                            "            set hashes(f5-cloud-libs.tar.gz) a6a9db3b89bbd014413706f22fa619c3717fac41fc99ffe875589c90e9b85a05cea227c134ea6e5b519c8fee0d12f2175368e75917f31f447ece3d92f31814af",
+                                            "            set hashes(f5-cloud-libs-aws.tar.gz) 22b554337b27802b7794206462bb98d346a7241622c11bcf9e834a06bcd1bd1b5b99efee512ac6eebe64e9d34f3024bcb569371fd4ee79006761bc5e5a74a59c",
+                                            "            set hashes(asm-policy-linux.tar.gz) 63b5c2a51ca09c43bd89af3773bbab87c71a6e7f6ad9410b229b4e0a1c483d46f1a9fff39d9944041b02ee9260724027414de592e99f4c2475415323e18a72e0",
+                                            "            set hashes(f5.http.v1.2.0rc4.tmpl) 47c19a83ebfc7bd1e9e9c35f3424945ef8694aa437eedd17b6a387788d4db1396fefe445199b497064d76967b0d50238154190ca0bd73941298fc257df4dc034",
+                                            "            set hashes(f5.http.v1.2.0rc6.tmpl) 811b14bffaab5ed0365f0106bb5ce5e4ec22385655ea3ac04de2a39bd9944f51e3714619dae7ca43662c956b5212228858f0592672a2579d4a87769186e2cbfe",
+                                            "",
+                                            "            set file_path [lindex $tmsh::argv 1]",
+                                            "            set file_name [file tail $file_path]",
+                                            "",
+                                            "            if {![info exists hashes($file_name)]} {",
+                                            "                tmsh::log err \"No hash found for $file_name\"",
+                                            "                exit 1",
+                                            "            }",
+                                            "",
+                                            "            set expected_hash $hashes($file_name)",
+                                            "            set computed_hash [lindex [exec /usr/bin/openssl dgst -r -sha512 $file_path] 0]",
+                                            "            if { $expected_hash eq $computed_hash } {",
+                                            "                exit 0",
+                                            "            }",
+                                            "            tmsh::log err \"Hash does not match for $file_path\"",
+                                            "            exit 1",
+                                            "        }]} {",
+                                            "            tmsh::log err {Unexpected error in verifyHash}",
+                                            "            exit 1",
+                                            "        }",
+                                            "    }",
+                                            "    script-signature QmpupbE2kzw2T7LO/Hp6NtscwZnEXjq8U0xOQLOfFIid1pdvsis6HOphdKyXjY+uzFnHktSy/Xe2LdwxjKmKRaMy5ZuE8NR+MJyUGLR3OwgVj1sGVZgwDCWvkBLyNKDQFkFfuTBk6TTN7q58+dJ3qulOv7KWkpKq/m8+8VXyQ4pj+96bHWwrs8kYRtHX5wc7cSJE/3thNWCF8v9BAyFFUFEyy6z7mFhH8iD2i+OEnqpK+0VAY1irspmaCigo3NmJXfZXIo2cWIopORqWsCATsVT6lunpV6z7h2FipnMJpAhVWqlzezSAOCHI0juPeGDAHIyNX8uLlTOpWJSgP1d4YQ==",
+                                            "}",
+                                            ""
+                                        ]
+                                    ]
+                                },
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root"
+                            },
+                            "/config/waitThenRun.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash",
+                                            "while true; do echo \"waiting for cloud libs install to complete\"",
+                                            "    if [ -f /config/cloud/cloudLibsReady ]; then",
+                                            "        break",
+                                            "    else",
+                                            "        sleep 10",
+                                            "    fi",
+                                            "done",
+                                            "\"$@\""
+                                        ]
+                                    ]
+                                },
+                                "group": "root",
+                                "mode": "000755",
+                                "owner": "root"
+                            },
+                            "/config/cloud/aws/signalDone.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-signal -e $? '",
+                                            {
+                                                "Ref": "BIGIPWaitHandle"
+                                            },
+                                            "'\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/cloud/aws/appConfiguartion.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "set -x\n",
+                                            "export PATH=\"/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin/\"\n",
+                                            "while getopts i:d:x: option\n",
+                                            "do	case \"$option\" in\n",
+                                                "i) ipAddress=$OPTARG;;\n",
+                                                "d) domainFqdn=$OPTARG;;\n",
+                                                "x) passwd=$OPTARG;;\n",
+                                                "esac\n",
+                                            "done\n",
+                                            "user=\"admin\"\n",
+                                            "#\n",
+                                            "#\n",
+                                            "#\n",
+                                            "pool_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/pool -d '{\"name\":\"kops_ssh_pool\",\"description\":\"kops_ssh_pool\",\"monitor\":\"/Common/tcp \",\"members\":[{\"name\":\"'\"$ipAddress\"':22\",\"address\":\"'\"$ipAddress\"'\"}]}' -o /dev/null)\n",
+                                            "#\n",
+                                            "#\n",
+                                            "if [[ ${pool_response_code} != 200 ]]; then\n",
+                                            "echo \"Failed to create the kops_ssh_pool; exiting with response code ${pool_response_code}\"\n",
+                                            "exit ${pool_response_code}\n",
+                                            "else\n",
+                                            "echo \"KOPS SSH Pool creation complete.\"\n",
+                                            "fi\n",
+                                            "#\n",
+                                            "#\n",
+                                            "vip_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/virtual -d '{\"name\":\"kops_ssh_vip\",\"destination\":\"/Common/0.0.0.0:22\",\"enabled\":true,\"ipProtocol\":\"tcp\",\"mask\":\"any\",\"pool\":\"/Common/kops_ssh_pool\",\"source\":\"0.0.0.0/0\",\"sourceAddressTranslation\":{\"type\":\"automap\"},\"translateAddress\":\"enabled\",\"translatePort\":\"enabled\",\"vlansDisabled\":true,\"vsIndex\":3,\"profiles\":[{\"name\":\"tcp\"}]}' -o /dev/null)\n",
+                                            "#\n",
+                                            "#\n",
+                                            "if [[ ${vip_response_code} != 200 ]]; then\n",
+                                            "echo \"Failed to create KOPS SSH VIP; exiting with response code ${vip_response_code}\"\n",
+                                            "exit ${vip_response_code}\n",
+                                            "else\n",
+                                            "echo \"KOPS SSH VIP creation complete.\"\n",
+                                            "fi\n",
+                                            "#\n",
+                                            "#\n",
+                                            "exit\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "001-disable-1nicautoconfig": {
+                                "command": "/usr/bin/setdb provision.1nicautoconfig disable"
+                            },
+                            "002-install-libs": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/installCloudLibs.sh",
+                                            "&>> /var/log/cloudlibs-install.log < /dev/null &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "003-1nic-setup": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        []
+                                    ]
+                                }
+                            },
+                            "004-create-admin-user": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            " f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
+                                            " --signal ADMIN_CREATED",
+                                            " --file /config/cloud/aws/createUser.sh",
+                                            " --cl-args '",
+                                            {
+                                                "Ref": "adminUsername"
+                                            },
+                                            "'",
+                                            " --log-level debug",
+                                            " -o /var/log/createUser.log",
+                                            " &>> /var/log/cloudlibs-install.log < /dev/null &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "005-onboard-BIG-IP": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "NAME_SERVER=`/config/getNameServer.sh eth1`;",
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/onboard.js",
+                                            "--wait-for ADMIN_CREATED",
+                                            "--signal ONBOARD_DONE",
+                                            "-o /var/log/onboard.log",
+                                            "--log-level debug",
+                                            "--no-reboot",
+                                            "--host localhost",
+                                            "--user admin",
+                                            "--password",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            "--hostname `curl http://169.254.169.254/latest/meta-data/hostname`",
+                                            "--ntp 0.us.pool.ntp.org",
+                                            "--ntp 1.us.pool.ntp.org",
+                                            "--tz UTC",
+                                            "--dns ${NAME_SERVER}",
+                                            "--module ltm:nominal",
+                                            "--ping",
+                                            "&>> /var/log/cloudlibs-install.log < /dev/null &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "006-network-config": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/network.js",
+                                            "-o /var/log/networkConfig.log",
+                                            "--log-level debug",
+                                            "--wait-for ONBOARD_DONE",
+                                            "--signal NETWORK_CONFIG_DONE",
+                                            "--host localhost",
+                                            "--user admin",
+                                            "--password",
+                                            {
+                                                "Ref": "adminPassword"
+                                            },
+                                            "--default-gw 10.10.10.1",
+                                            "--vlan 'External, 1.1'",
+                                            "--vlan 'Internal, 1.2'",
+                                            "--self-ip 'external_self_ip, ",
+                                            {
+                                                "Fn::GetAtt": [
+                                                    "BigipExternalInterface",
+                                                    "PrimaryPrivateIpAddress"
+                                                ]
+                                            },
+                                            ", External'",
+                                            "--self-ip 'internal_self_ip, ",
+                                            {
+                                                "Fn::GetAtt": [
+                                                    "BigipInternalInterface",
+                                                    "PrimaryPrivateIpAddress"
+                                                ]
+                                            },
+                                            ", Internal'",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "007-app-config": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh ",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/appConfiguartion.sh",
+                                            "--cwd /config/cloud/aws",
+                                            "--log-level debug",
+                                            "--cl-args '",
+                                            "-i",
+                                            { "Fn::GetAtt": [ "KopsInstance","PrivateIp" ] },
+                                            "-d myWebapp.example.com",
+                                            "-x ",
+                                            { "Ref": "adminPassword" },
+                                            "'",
+                                            "-o /var/log/appConfiguartion.log",
+                                            "--wait-for NETWORK_CONFIG_DONE",
+                                            "--signal APP_CONFIG_DONE",
+                                            "--background",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "008-rm-password": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        []
+                                    ]
+                                }
+                            },
+                            "009-signal-done": {
+                                "command": {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "nohup /config/waitThenRun.sh",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
+                                            "--file /config/cloud/aws/signalDone.sh",
+                                            "--cwd /config/cloud/aws",
+                                            "-o /var/log/signlDone.log",
+                                            "--wait-for APP_CONFIG_DONE",
+                                            "--background",
+                                            "&>> /var/log/cloudlibs-install.log &"
+                                        ]
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "BIGIPInstanceType"
+                },
+                "ImageId": {
+                    "Ref": "BIGIPAMI"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "NetworkInterfaces": [
+                    {
+                        "Description": "Public or External Interface",
+                        "DeviceIndex": "1",
+                        "NetworkInterfaceId": {
+                            "Ref": "BigipExternalInterface"
+                        }
+                    },
+                    {
+                        "Description": "Internal Interface",
+                        "DeviceIndex": "2",
+                        "NetworkInterfaceId": {
+                            "Ref": "BigipInternalInterface"
+                        }
+                    },
+                    {
+                        "Description": "MGMT Interface",
+                        "DeviceIndex": "0",
+                        "NetworkInterfaceId": {
+                            "Ref": "BigipMGMTInterface"
+                        }
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash\n",
+                                "/opt/aws/apitools/cfn-init-1.4-0.amzn1/bin/cfn-init -v ",
+                                " --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                " --resource BIGIPInstance",
+                                " --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "BIGIPWaitCondition": {
+            "Type": "AWS::CloudFormation::WaitCondition",
+            "DependsOn": "BIGIPInstance",
+            "Properties": {
+                "Handle": {
+                    "Ref": "BIGIPWaitHandle"
+                },
+                "Count": "1",
+                "Timeout": "1800"
+            }
+        },
+        "BIGIPWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle",
+            "Properties": {}
+        },
         "KopsInstanceSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -427,12 +1078,27 @@
                                         [
                                             "#!/bin/bash -xe\n",
                                             "#\n",
+                                            "#Update Yum and system.\n",
                                             "yum clean all\n",
                                             "yum -y update\n",
+                                            "#Install jq\n",
+                                            "curl -Lk https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -o /opt/jq-linux64\n",
+                                            "chmod +x /opt/jq-linux64\n",
+                                            "ln -s /opt/jq-linux64 /usr/local/bin/jq\n",
+                                            "#Install kubectl\n",
                                             "curl -Lk https://github.com/kubernetes/kubernetes/releases/download/v1.4.9/kubernetes.tar.gz -o /opt/kubernetes.tar.gz\n",
                                             "tar -zxvf /opt/kubernetes.tar.gz\n",
                                             "ln -s /opt/kubernetes/platforms/linux/amd64/kubectl /usr/local/bin/kubectl\n",
+                                            "#Install kops\n",
+                                            "curl -Lk https://github.com/kubernetes/kops/releases/download/1.5.1/kops-linux-amd64 -o /opt/kops-linux-amd64\n",
+                                            "chmod +x /opt/kops-linux-amd64\n",
+                                            "mv /opt/kops-linux-amd64 /usr/local/bin/kops\n",
+                                            "curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
+                                            "python get-pip.py --user\n",
+                                            "/root/.local/bin/pip install awscli --upgrade --user\n",
+                                            "#Create K8s Cluster\n",
                                             "date\n",
+                                            "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
                                         ]
                                     ]
@@ -535,76 +1201,36 @@
         }
     },
     "Outputs": {
-        "AppConnectorURL": {
-            "Description": "The URL to connect to the Application Connector.",
+        "KopsSshURL": {
+            "Description": "The URL to connect to the KOPS box.",
             "Value": {
                 "Fn::Join": [
                     "",
                     [
-                        "http://",
                         {
                             "Fn::GetAtt": [
-                                "appConnectorInstance",
+                                "KopsInstance",
+                                "PublicDnsName"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        },
+        "BIGIPInstance": {
+            "Description": "The information required to add this instance as a node in the Applicaiton Connector.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Fn::GetAtt": [
+                                "BIGIPInstance",
                                 "PublicDnsName"
                             ]
                         },
-                        ":8080/"
-                    ]
-                ]
-            }
-        },
-        "appInstance1": {
-            "Description": "The information required to add this instance as a node in the Applicaiton Connector.",
-            "Value": {
-                "Fn::Join": [
-                    "",
-                    [
-                        {
-                            "Ref": "appInstance1"
-                        },
-                        "##",
-                        {
-                            "Ref": "StackVPC"
-                        },
-                        "##",
-                        {
-                            "Fn::GetAtt": [
-                                "appInstance1",
-                                "PrivateIp"
-                            ]
-                        },
-                        "##",
-                        {
-                            "Ref": "appInstance1Name"
-                        }
-                    ]
-                ]
-            }
-        },
-        "appInstance2": {
-            "Description": "The information required to add this instance as a node in the Applicaiton Connector.",
-            "Value": {
-                "Fn::Join": [
-                    "",
-                    [
-                        {
-                            "Ref": "appInstance2"
-                        },
-                        "##",
-                        {
-                            "Ref": "StackVPC"
-                        },
-                        "##",
-                        {
-                            "Fn::GetAtt": [
-                                "appInstance2",
-                                "PrivateIp"
-                            ]
-                        },
-                        "##",
-                        {
-                            "Ref": "appInstance2Name"
-                        }
+                        ":8443/"
                     ]
                 ]
             }
