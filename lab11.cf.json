@@ -729,7 +729,7 @@
                                             "#!/bin/bash\n",
                                             "set -x\n",
                                             "export PATH=\"/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin/\"\n",
-                                            "while getopts i:d:x: option\n",
+                                            "while getopts i:d:x:p: option\n",
                                             "do case \"$option\" in\n",
                                             "     i) ipAddress=$OPTARG;;\n",
                                             "     d) domainFqdn=$OPTARG;;\n",
