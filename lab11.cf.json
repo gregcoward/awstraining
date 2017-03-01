@@ -378,6 +378,12 @@
                 }
             }
         },
+        "s3Bucket": {
+            "Type" : "AWS::S3::Bucket",
+            "Properties" : {
+                "AccessControl" : "public-read-write"
+            }
+        },
         "BIGIPSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -723,6 +729,7 @@
                                             "     i) ipAddress=$OPTARG;;\n",
                                             "     d) domainFqdn=$OPTARG;;\n",
                                             "     x) passwd=$OPTARG;;\n",
+                                            "     p) pipAddress=$OPTARG;;\n",
                                             "   esac\n",
                                             "done\n",
                                             "user=\"admin\"\n",
@@ -740,7 +747,7 @@
                                             "fi\n",
                                             "#\n",
                                             "#\n",
-                                            "vip_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/virtual -d '{\"name\":\"kops_ssh_vip\",\"destination\":\"/Common/\"'\"$ipAddress\"':22\",\"enabled\":true,\"ipProtocol\":\"tcp\",\"mask\":\"any\",\"pool\":\"/Common/kops_ssh_pool\",\"source\":\"0.0.0.0/0\",\"sourceAddressTranslation\":{\"type\":\"automap\"},\"translateAddress\":\"enabled\",\"translatePort\":\"enabled\",\"vlansDisabled\":true,\"vsIndex\":3,\"profiles\":[{\"name\":\"tcp\"}]}' -o /dev/null)\n",
+                                            "vip_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/virtual -d '{\"name\":\"kops_ssh_vip\",\"destination\":\"/Common/\"'\"$pipAddress\"':22\",\"enabled\":true,\"ipProtocol\":\"tcp\",\"mask\":\"any\",\"pool\":\"/Common/kops_ssh_pool\",\"source\":\"0.0.0.0/0\",\"sourceAddressTranslation\":{\"type\":\"automap\"},\"translateAddress\":\"enabled\",\"translatePort\":\"enabled\",\"vlansDisabled\":true,\"vsIndex\":3,\"profiles\":[{\"name\":\"tcp\"}]}' -o /dev/null)\n",
                                             "#\n",
                                             "#\n",
                                             "if [[ ${vip_response_code} != 200 ]]; then\n",
@@ -1046,6 +1053,36 @@
                                 "owner": "root",
                                 "group": "root"
                             },
+                            "/opt/create_cluster.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "export CLUSTER_NAME=emeatrainingk8s.marc.cloud\n",
+                                            "export KOPS_STATE_STORE=s3://",
+                                            { "Ref": "s3Bucket"},
+                                            "\n",
+                                            "export VPC_ID=",
+                                            { "Ref": "StackVPC"},
+                                            "\n",
+                                            "export NETWORK_CIDR=",
+                                            { "Fn::GetAtt": ["StackVPC","CidrBlock"] },
+                                            "\n",
+                                            "export SUBNET_ID=",
+                                            { "Ref": "internalSubnet" },
+                                            "\n",
+                                            "#kops update cluster --name=${CLUSTER_NAME}\n",
+                                            "kops create cluster --zones=",
+                                            { "Ref": "AWS::Region" },
+                                            " --name=${CLUSTER_NAME} --vpc=${VPC_ID} --network-cidr=${NETWORK_CIDR}\n",
+                                            "#kops update cluster cluster3.marc.cloud --yes\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
                             "/opt/appConfiguartion.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1070,10 +1107,9 @@
                                             "mv /opt/kops-linux-amd64 /usr/local/bin/kops\n",
                                             "curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
                                             "python /opt/get-pip.py --user\n",
-                                            "export PATH=~/.local/bin:$PATH",
+                                            "export PATH=~/.local/bin:$PATH\n",
                                             "pip install awscli --upgrade --user\n",
                                             "#Create K8s Cluster\n",
-                                            "",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
