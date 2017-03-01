@@ -920,7 +920,7 @@
                                             " -x ",
                                             { "Ref": "adminPassword" },
                                             " -p ",
-                                            { "Fn::GetAtt": "BigipExternalInterface,PrimaryPrivateIpAddress" },
+                                            { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"] },
                                             "'",
                                             " -o /var/log/appConfiguartion.log",
                                             " --wait-for NETWORK_CONFIG_DONE",
