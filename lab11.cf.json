@@ -65,12 +65,14 @@
         "KopsInstanceType": {
             "Description": "EC2 instance type",
             "Type": "String",
-            "Default": "t2.micro",
+            "Default": "t2.medium",
             "AllowedValues": [
                 "t1.micro",
                 "t2.micro",
                 "t2.small",
-                "m1.small"
+                "t2.medium",
+                "m1.small",
+                "m3.medium"
             ],
             "ConstraintDescription": "Choose one of the following."
         },
@@ -80,7 +82,31 @@
             "Default": "ami-d2c924b2",
             "AllowedValues": [
                 "ami-d2c924b2",
-                "ami-6d1c2007"
+                "ami-6d1c2007",
+                "ami-6a2d760f"
+            ]
+        },
+        "BIGIPName": {
+            "Description": "The name of the BIG-IP.",
+            "Type": "String"
+        },
+        "BIGIPInstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m4.xlarge",
+            "AllowedValues": [
+                "m4.xlarge"
+            ],
+            "ConstraintDescription": "Choose one of these."
+        },
+        "BIGIPAMI": {
+            "Description": "F5 BIG-IP AMI to install from.",
+            "Type": "String",
+            "Default": "ami-8633efe6",
+            "AllowedValues": [
+                "ami-8633efe6",
+                "ami-0b7a011c",
+                "ami-25002540"
             ]
         },
         "BIGIPName": {
@@ -143,22 +169,13 @@
                 "VpcId": {
                     "Ref": "StackVPC"
                 },
+                "AvailabilityZone": {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
                 "CidrBlock": "10.10.5.0/24",
-                "MapPublicIpOnLaunch": true,
+                "MapPublicIpOnLaunch": true,                
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "mgmtSubnet-",
-                                    {
-                                        "Ref": "AWS::StackName"
-                                    }
-                                ]
-                            ]
-                        }
+                        "Value": "mgmtSubnet"
                     }
                 ]
             }
@@ -169,22 +186,13 @@
                 "VpcId": {
                     "Ref": "StackVPC"
                 },
+                "AvailabilityZone": {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
                 "CidrBlock": "10.10.10.0/24",
                 "MapPublicIpOnLaunch": true,
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "ExternalSubnet-",
-                                    {
-                                        "Ref": "AWS::StackName"
-                                    }
-                                ]
-                            ]
-                        }
+                        "Value": "externalSubnet"
                     }
                 ]
             }
@@ -195,22 +203,13 @@
                 "VpcId": {
                     "Ref": "StackVPC"
                 },
+                "AvailabilityZone": {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
                 "CidrBlock": "10.10.20.0/24",
                 "MapPublicIpOnLaunch": false,
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "internalSubnet-",
-                                    {
-                                        "Ref": "AWS::StackName"
-                                    }
-                                ]
-                            ]
-                        }
+                        "Value": "internalSubnet"
                     }
                 ]
             }
@@ -407,6 +406,15 @@
                 }
             }
         },
+<<<<<<< HEAD
+=======
+        "s3Bucket": {
+            "Type" : "AWS::S3::Bucket",
+            "Properties" : {
+                "AccessControl" : "public-read-write"
+            }
+        },
+>>>>>>> origin/master
         "BIGIPSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -562,7 +570,11 @@
                                 "group": "root",
                                 "mode": "000755",
                                 "owner": "root"
+<<<<<<< HEAD
                             },
+=======
+                            },  
+>>>>>>> origin/master
                             "/config/cloud/aws/rm-password.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -747,6 +759,7 @@
                                             "#!/bin/bash\n",
                                             "set -x\n",
                                             "export PATH=\"/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin/\"\n",
+<<<<<<< HEAD
                                             "## You can add or remove any command line arguments that you need to make this work with your iApp.\n",
                                             "while getopts i:d:x: option\n",
                                             "do	case \"$option\" in\n",
@@ -789,19 +802,49 @@
                                             "# deploy application\n",
                                             "#\n",
                                             "pool_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost:8443/mgmt/tm/ltm/pool -d '{\"name\":\"kops_ssh_pool\",\"description\":\"kops_ssh_pool\",\"monitor\":\"/Common/tcp \",\"members\":[{\"name\":\"'\"$ipAddress\"':22\",\"address\":\"'\"$ipAddress\"'\"}]}' -o /dev/null)\n",
+=======
+                                            "while getopts i:d:x: option\n",
+                                            "do case \"$option\" in\n",
+                                            "     i) ipAddress=$OPTARG;;\n",
+                                            "     d) domainFqdn=$OPTARG;;\n",
+                                            "     x) passwd=$OPTARG;;\n",
+                                            "     p) pipAddress=$OPTARG;;\n",
+                                            "   esac\n",
+                                            "done\n",
+                                            "user=\"admin\"\n",
+                                            "#\n",
+                                            "#\n",
+                                            "#\n",
+                                            "pool_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/pool -d '{\"name\":\"kops_ssh_pool\",\"description\":\"kops_ssh_pool\",\"monitor\":\"/Common/tcp \",\"members\":[{\"name\":\"'\"$ipAddress\"':22\",\"address\":\"'\"$ipAddress\"'\"}]}' -o /dev/null)\n",
+                                            "#\n",
+                                            "#\n",
+>>>>>>> origin/master
                                             "if [[ ${pool_response_code} != 200 ]]; then\n",
                                             "echo \"Failed to create the kops_ssh_pool; exiting with response code ${pool_response_code}\"\n",
                                             "exit ${pool_response_code}\n",
                                             "else\n",
                                             "echo \"KOPS SSH Pool creation complete.\"\n",
                                             "fi\n",
+<<<<<<< HEAD
                                             "vip_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost:8443/mgmt/tm/ltm/virtual -d '{\"name\":\"kops_ssh_vip\",\"destination\":\"/Common/0.0.0.0:22\",\"enabled\":true,\"ipProtocol\":\"tcp\",\"mask\":\"any\",\"pool\":\"/Common/kops_ssh_pool\",\"source\":\"0.0.0.0/0\",\"sourceAddressTranslation\":{\"type\":\"automap\"},\"translateAddress\":\"enabled\",\"translatePort\":\"enabled\",\"vlansDisabled\":true,\"vsIndex\":3,\"profiles\":[{\"name\":\"tcp\"}]}' -o /dev/null)\n",
+=======
+                                            "#\n",
+                                            "#\n",
+                                            "vip_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/virtual -d '{\"name\":\"kops_ssh_vip\",\"destination\":\"/Common/\"'\"$pipAddress\"':22\",\"enabled\":true,\"ipProtocol\":\"tcp\",\"mask\":\"any\",\"pool\":\"/Common/kops_ssh_pool\",\"source\":\"0.0.0.0/0\",\"sourceAddressTranslation\":{\"type\":\"automap\"},\"translateAddress\":\"enabled\",\"translatePort\":\"enabled\",\"vlansDisabled\":true,\"vsIndex\":3,\"profiles\":[{\"name\":\"tcp\"}]}' -o /dev/null)\n",
+                                            "#\n",
+                                            "#\n",
+>>>>>>> origin/master
                                             "if [[ ${vip_response_code} != 200 ]]; then\n",
                                             "echo \"Failed to create KOPS SSH VIP; exiting with response code ${vip_response_code}\"\n",
                                             "exit ${vip_response_code}\n",
                                             "else\n",
                                             "echo \"KOPS SSH VIP creation complete.\"\n",
                                             "fi\n",
+<<<<<<< HEAD
+=======
+                                            "#\n",
+                                            "#\n",
+>>>>>>> origin/master
                                             "exit\n"
                                         ]
                                     ]
@@ -930,7 +973,11 @@
                             "007-app-config": {
                                 "command": {
                                     "Fn::Join": [
+<<<<<<< HEAD
                                         " ",
+=======
+                                        "",
+>>>>>>> origin/master
                                         [
                                             "nohup /config/waitThenRun.sh ",
                                             "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
@@ -939,6 +986,7 @@
                                             " --log-level debug",
                                             " --cl-args '",
                                             "-i ",
+<<<<<<< HEAD
                                             {
                                                 "Fn::GetAtt": [
                                                     "KopsInstance",
@@ -956,6 +1004,20 @@
                                             " --signal APP_CONFIG_DONE",
                                             " --background",
                                             " &>> /var/log/cloudlibs-install.log &"
+=======
+                                            { "Fn::GetAtt": [ "KopsInstance","PrivateIp" ] },
+                                            " -d myWebapp.example.com",
+                                            " -x ",
+                                            { "Ref": "adminPassword" },
+                                            " -p ",
+                                            { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"] },
+                                            "'",
+                                            " -o /var/log/appConfiguartion.log",
+                                            " --wait-for NETWORK_CONFIG_DONE",
+                                            " --signal APP_CONFIG_DONE",
+                                            " --background",
+                                            " &>> /var/log/cloudlibs-install.log &\n"
+>>>>>>> origin/master
                                         ]
                                     ]
                                 }
@@ -1102,6 +1164,36 @@
                                 "owner": "root",
                                 "group": "root"
                             },
+                            "/opt/create_cluster.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "export CLUSTER_NAME=emeatrainingk8s.marc.cloud\n",
+                                            "export KOPS_STATE_STORE=s3://",
+                                            { "Ref": "s3Bucket"},
+                                            "\n",
+                                            "export VPC_ID=",
+                                            { "Ref": "StackVPC"},
+                                            "\n",
+                                            "export NETWORK_CIDR=",
+                                            { "Fn::GetAtt": ["StackVPC","CidrBlock"] },
+                                            "\n",
+                                            "export SUBNET_ID=",
+                                            { "Ref": "internalSubnet" },
+                                            "\n",
+                                            "#kops update cluster --name=${CLUSTER_NAME}\n",
+                                            "kops create cluster --zones=",
+                                            { "Ref": "AWS::Region" },
+                                            " --name=${CLUSTER_NAME} --vpc=${VPC_ID} --network-cidr=${NETWORK_CIDR}\n",
+                                            "#kops update cluster cluster3.marc.cloud --yes\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
                             "/opt/appConfiguartion.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1114,7 +1206,11 @@
                                             "yum -y update\n",
                                             "#Install jq\n",
                                             "curl -Lk https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -o /opt/jq-linux64\n",
+<<<<<<< HEAD
                                             "chmod +x /opt/jq-linux64",
+=======
+                                            "chmod +x /opt/jq-linux64\n",
+>>>>>>> origin/master
                                             "ln -s /opt/jq-linux64 /usr/local/bin/jq\n",
                                             "#Install kubectl\n",
                                             "curl -Lk https://github.com/kubernetes/kubernetes/releases/download/v1.4.9/kubernetes.tar.gz -o /opt/kubernetes.tar.gz\n",
@@ -1123,10 +1219,17 @@
                                             "#Install kops\n",
                                             "curl -Lk https://github.com/kubernetes/kops/releases/download/1.5.1/kops-linux-amd64 -o /opt/kops-linux-amd64\n",
                                             "chmod +x /opt/kops-linux-amd64\n",
+<<<<<<< HEAD
                                             "mv kops-linux-amd64 /usr/local/bin/kops\n",
                                             "yum -y install python34\n",
                                             "curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
                                             "python3 get-pip.py --user\n",
+=======
+                                            "mv /opt/kops-linux-amd64 /usr/local/bin/kops\n",
+                                            "curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
+                                            "python /opt/get-pip.py --user\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+>>>>>>> origin/master
                                             "pip install awscli --upgrade --user\n",
                                             "#Create K8s Cluster\n",
                                             "date\n",
@@ -1240,10 +1343,14 @@
                     "",
                     [
                         {
+<<<<<<< HEAD
                             "Fn::GetAtt": [
                                 "KopsInstance",
                                 "PublicDnsName"
                             ]
+=======
+                            "Ref": "BIGIPExternalEip"
+>>>>>>> origin/master
                         }
                     ]
                 ]
@@ -1261,8 +1368,12 @@
                                 "BIGIPInstance",
                                 "PublicDnsName"
                             ]
+<<<<<<< HEAD
                         },
                         ":8443/"
+=======
+                        }                        
+>>>>>>> origin/master
                     ]
                 ]
             }
