@@ -13,7 +13,8 @@
                         "adminUsername",
                         "adminPassword",
                         "KopsInstanceName",
-                        "BIGIPName"
+                        "BIGIPName",
+                        "K8ClusterName"
                     ]
                 },
                 {
@@ -43,6 +44,10 @@
             "Description": "Name of an existing EC2 KeyPair",
             "Type": "AWS::EC2::KeyPair::KeyName",
             "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
+        },
+        "K8ClusterName": {
+            "Description": "The name of the BIG-IP.",
+            "Type": "String"
         },
         "KopsInstanceName": {
             "Description": "The name of the application connector.",
@@ -1058,7 +1063,9 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "export CLUSTER_NAME=emeatrainingk8s.marc.cloud\n",
+                                            "export CLUSTER_NAME=",
+                                            { "Ref": "K8ClusterName" },
+                                            ".emeatraining.cloud\n",
                                             "export KOPS_STATE_STORE=s3://",
                                             { "Ref": "s3Bucket"},
                                             "\n",
