@@ -108,34 +108,6 @@
                 "ami-0b7a011c",
                 "ami-25002540"
             ]
-        },
-        "BIGIPName": {
-            "Description": "The name of the BIG-IP.",
-            "Type": "String"
-        },
-        "BIGIPInstanceType": {
-            "Description": "EC2 instance type",
-            "Type": "String",
-            "Default": "m3.xlarge",
-            "AllowedValues": [
-                "m3.xlarge",
-                "m3.2xlarge",
-                "c1.medium",
-                "c1.xlarge",
-                "cc1.4xlarge",
-                "cc2.8xlarge",
-                "cg1.4xlarge"
-            ],
-            "ConstraintDescription": "Choose one of these."
-        },
-        "BIGIPAMI": {
-            "Description": "F5 BIG-IP AMI to install from.",
-            "Type": "String",
-            "Default": "ami-8633efe6",
-            "AllowedValues": [
-                "ami-8633efe6",
-                "ami-0b7a011c"
-            ]
         }
     },
     "Resources": {
