@@ -746,11 +746,11 @@
                                             "set -x\n",
                                             "export PATH=\"/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin/\"\n",
                                             "while getopts i:d:x: option\n",
-                                            "do	case \"$option\" in\n",
-                                                "i) ipAddress=$OPTARG;;\n",
-                                                "d) domainFqdn=$OPTARG;;\n",
-                                                "x) passwd=$OPTARG;;\n",
-                                                "esac\n",
+                                            "do case \"$option\" in\n",
+                                            "     i) ipAddress=$OPTARG;;\n",
+                                            "     d) domainFqdn=$OPTARG;;\n",
+                                            "     x) passwd=$OPTARG;;\n",
+                                            "   esac\n",
                                             "done\n",
                                             "user=\"admin\"\n",
                                             "#\n",
@@ -906,25 +906,25 @@
                             "007-app-config": {
                                 "command": {
                                     "Fn::Join": [
-                                        " ",
+                                        "",
                                         [
                                             "nohup /config/waitThenRun.sh ",
                                             "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/runScript.js",
-                                            "--file /config/cloud/aws/appConfiguartion.sh",
-                                            "--cwd /config/cloud/aws",
-                                            "--log-level debug",
-                                            "--cl-args '",
-                                            "-i",
+                                            " --file /config/cloud/aws/appConfiguartion.sh",
+                                            " --cwd /config/cloud/aws",
+                                            " --log-level debug",
+                                            " --cl-args '",
+                                            "-i ",
                                             { "Fn::GetAtt": [ "KopsInstance","PrivateIp" ] },
-                                            "-d myWebapp.example.com",
-                                            "-x ",
+                                            " -d myWebapp.example.com",
+                                            " -x ",
                                             { "Ref": "adminPassword" },
                                             "'",
-                                            "-o /var/log/appConfiguartion.log",
-                                            "--wait-for NETWORK_CONFIG_DONE",
-                                            "--signal APP_CONFIG_DONE",
-                                            "--background",
-                                            "&>> /var/log/cloudlibs-install.log &"
+                                            " -o /var/log/appConfiguartion.log",
+                                            " --wait-for NETWORK_CONFIG_DONE",
+                                            " --signal APP_CONFIG_DONE",
+                                            " --background",
+                                            " &>> /var/log/cloudlibs-install.log &\n"
                                         ]
                                     ]
                                 }
@@ -1094,9 +1094,11 @@
                                             "chmod +x /opt/kops-linux-amd64\n",
                                             "mv /opt/kops-linux-amd64 /usr/local/bin/kops\n",
                                             "curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
-                                            "python get-pip.py --user\n",
-                                            "/root/.local/bin/pip install awscli --upgrade --user\n",
+                                            "python /opt/get-pip.py --user\n",
+                                            "export PATH=~/.local/bin:$PATH",
+                                            "pip install awscli --upgrade --user\n",
                                             "#Create K8s Cluster\n",
+                                            "",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
@@ -1208,10 +1210,7 @@
                     "",
                     [
                         {
-                            "Fn::GetAtt": [
-                                "KopsInstance",
-                                "PublicDnsName"
-                            ]
+                            "Ref": "BIGIPExternalEip"
                         }
                     ]
                 ]
@@ -1229,8 +1228,7 @@
                                 "BIGIPInstance",
                                 "PublicDnsName"
                             ]
-                        },
-                        ":8443/"
+                        }                        
                     ]
                 ]
             }
