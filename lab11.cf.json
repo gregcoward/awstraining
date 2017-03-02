@@ -12,6 +12,8 @@
                         "KeyName",
                         "adminUsername",
                         "adminPassword",
+                        "accessKey",
+                        "secretKey",
                         "KopsInstanceName",
                         "BIGIPName",
                         "K8ClusterName"
@@ -66,6 +68,14 @@
             "Description": "A password that will be used to login into the applicaiton connector.",
             "MaxLength": "255",
             "MinLength": "1"
+        },
+        "accessKey": {
+            "Type": "String",
+            "Description": "Access Key required to create the cluster."
+        },
+        "secretKey": {
+            "Type": "String",
+            "Description": "Secret Key also required to create the cluster."
         },
         "KopsInstanceType": {
             "Description": "EC2 instance type",
@@ -1058,26 +1068,32 @@
                                 "owner": "root",
                                 "group": "root"
                             },
-                            "~/.aws/credentials":{
+                            "/root/.aws/credentials":{
                                 "content": {
                                     "Fn::Join": [
                                         "",
                                         [
                                             "[default]\n",
-                                            "aws_access_key_id = AKIAIDIBLKO74DLY4QBQ\n",
-                                            "aws_secret_access_key = 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\n"
+                                            "aws_access_key_id = ",
+                                            { "Ref": "" },
+                                            "\n",
+                                            "aws_secret_access_key = ",
+                                            { "Ref": "" },
+                                            "\n"
                                         ]
                                     ]
                                 }
                             },
-                            "~/.aws/config":{
+                            "/root/.aws/config":{
                                 "content": {
                                     "Fn::Join": [
                                         "",
                                         [
                                             "[default]\n",
                                             "output = json\n",
-                                            "region = us-east-2\n"
+                                            "region = ",
+                                            { "Ref": "AWS::Region" },
+                                            "\n"
                                         ]
                                     ]
                                 }
