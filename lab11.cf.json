@@ -1075,10 +1075,10 @@
                                         [
                                             "[default]\n",
                                             "aws_access_key_id = ",
-                                            { "Ref": "" },
+                                            { "Ref": "accessKey" },
                                             "\n",
                                             "aws_secret_access_key = ",
-                                            { "Ref": "" },
+                                            { "Ref": "secretKey" },
                                             "\n"
                                         ]
                                     ]
