@@ -1058,17 +1058,46 @@
                                 "owner": "root",
                                 "group": "root"
                             },
+                            "~/.aws/credentials":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[default]\n",
+                                            "aws_access_key_id = AKIAIDIBLKO74DLY4QBQ\n",
+                                            "aws_secret_access_key = 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\n"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "~/.aws/config":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[default]\n",
+                                            "output = json\n",
+                                            "region = us-east-2\n"
+                                        ]
+                                    ]
+                                }
+                            },
                             "/opt/create_cluster.sh": {
                                 "content": {
                                     "Fn::Join": [
                                         "",
                                         [
                                             "#!/bin/bash -xe\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export PATH=/usr/local/bin:$PATH\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export AWS_ACCESS_KEY_ID=AKIAIDIBLKO74DLY4QBQ\n",
+                                            "export AWS_SECRET_ACCESS_KEY=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\n",
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
                                             ".emeatraining.cloud\n",
                                             "export KOPS_STATE_STORE=s3://",
-                                            { "Ref": "s3Bucket"},
+                                            { "Fn::GetAtt": ["s3Bucket","WebsiteURL"] },
                                             "\n",
                                             "export VPC_ID=",
                                             { "Ref": "StackVPC"},
@@ -1081,7 +1110,7 @@
                                             "\n",
                                             "#kops update cluster --name=${CLUSTER_NAME}\n",
                                             "kops create cluster --zones=",
-                                            { "Ref": "AWS::Region" },
+                                            {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
                                             " --name=${CLUSTER_NAME} --vpc=${VPC_ID} --network-cidr=${NETWORK_CIDR}\n",
                                             "#kops update cluster cluster3.marc.cloud --yes\n"
                                         ]
@@ -1116,10 +1145,11 @@
                                             "curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
                                             "python /opt/get-pip.py --user\n",
                                             "export PATH=~/.local/bin:$PATH\n",
+                                            "echo export PATH=~/.local/bin:$PATH >> ~/.bashrc\n",
                                             "pip install awscli --upgrade --user\n",
-                                            "#Create K8s Cluster\n",
+                                            "#Create K8s Cluster\n",                                                                                       
                                             "nohup /opt/create_cluster.sh &",
-                                            "wait",
+                                            "wait\n",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
