@@ -1095,7 +1095,7 @@
                                             "export AWS_SECRET_ACCESS_KEY=kif8YoLZpR/J/g0Gf4c8iTDJ0RNHpysyyrqMIeZR\n",
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
-                                            ".emeatraining.cloud\n",
+                                            ".emeatraining.uk\n",
                                             "export KOPS_STATE_STORE=s3://",
                                             { "Fn::GetAtt": ["s3Bucket","WebsiteURL"] },
                                             "\n",
