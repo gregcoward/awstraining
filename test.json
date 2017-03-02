@@ -1,0 +1,53 @@
+{
+    "kind": "tm:ltm:virtual:virtualcollectionstate",
+    "selfLink": "https://localhost/mgmt/tm/ltm/virtual?ver=12.1.2",
+    "items": [
+        {
+            "kind": "tm:ltm:virtual:virtualstate",
+            "name": "kops_ssh_vip",
+            "partition": "Common",
+            "fullPath": "/Common/kops_ssh_vip",
+            "generation": 114,
+            "selfLink": "https://localhost/mgmt/tm/ltm/virtual/~Common~kops_ssh_vip?ver=12.1.2",
+            "addressStatus": "yes",
+            "autoLasthop": "default",
+            "cmpEnabled": "yes",
+            "connectionLimit": 0,
+            "destination": "/Common/10.10.10.126:22",
+            "enabled": true,
+            "gtmScore": 0,
+            "ipProtocol": "tcp",
+            "mask": "255.255.255.255",
+            "mirror": "disabled",
+            "mobileAppTunnel": "disabled",
+            "nat64": "disabled",
+            "pool": "/Common/kops_ssh_pool",
+            "poolReference": {
+                "link": "https://localhost/mgmt/tm/ltm/pool/~Common~kops_ssh_pool?ver=12.1.2"
+            },
+            "rateLimit": "disabled",
+            "rateLimitDstMask": 0,
+            "rateLimitMode": "object",
+            "rateLimitSrcMask": 0,
+            "serviceDownImmediateAction": "none",
+            "source": "0.0.0.0/0",
+            "sourceAddressTranslation": {
+                "type": "automap"
+            },
+            "sourcePort": "preserve",
+            "synCookieStatus": "not-activated",
+            "translateAddress": "enabled",
+            "translatePort": "enabled",
+            "vlansDisabled": true,
+            "vsIndex": 3,
+            "policiesReference": {
+                "link": "https://localhost/mgmt/tm/ltm/virtual/~Common~kops_ssh_vip/policies?ver=12.1.2",
+                "isSubcollection": true
+            },
+            "profilesReference": {
+                "link": "https://localhost/mgmt/tm/ltm/virtual/~Common~kops_ssh_vip/profiles?ver=12.1.2",
+                "isSubcollection": true
+            }
+        }
+    ]
+}
