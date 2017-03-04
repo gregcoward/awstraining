@@ -1098,6 +1098,42 @@
                                     ]
                                 }
                             },
+                            "/opt/k8ssecret.yaml": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "apiVersion: v1\n",
+                                            "items:\n",
+                                            "- apiVersion: v1\n",
+                                            "  data:\n",
+                                            "    password: ",
+                                            { "Fn::Base64": { "Ref": "adminPassword" } },
+                                            "\n",
+                                            "    url: ",
+                                            { "Fn::Base64": { "Fn::Join": ["",["https://", {"Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"]} ]] } },
+                                            "n",
+                                            "    username: ",
+                                            { "Fn::Base64": { "Ref": "adminUsername" } },
+                                            "\n",
+                                            "  kind: Secret\n",
+                                            "  metadata:\n",
+                                            "    name: bigip-credentials\n",
+                                            "    namespace: kube-system\n",
+                                            "    resourceVersion: \"428661\"\n",
+                                            "    selfLink: /api/v1/namespaces/kube-system/secrets/bigip-credentials\n",
+                                            "  type: Opaque\n",
+                                            "kind: List\n",
+                                            "metadata: {}\n",
+                                            "resourceVersion: \"\"\n",
+                                            "selfLink: \"\"\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
                             "/opt/create_cluster.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1170,18 +1206,14 @@
                                             "export SUBNET_ID=",
                                             { "Ref": "internalSubnet" },
                                             "\n",
-                                            "#kops update cluster --name=${CLUSTER_NAME}\n",
-                                            "kops delete cluster --zones=",
-                                            {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
-                                            " --name=${CLUSTER_NAME} --vpc=${VPC_ID} --network-cidr=${NETWORK_CIDR}\n",
-                                            "#kops update cluster cluster3.marc.cloud --yes\n"
+                                            "kops delete cluster --name=${CLUSTER_NAME} --yes\n"
                                         ]
                                     ]
                                 },
                                 "mode": "000755",
                                 "owner": "root",
                                 "group": "root"
-                            },
+                            },                        
                             "/opt/update_cluster.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1212,7 +1244,7 @@
                                             "export SUBNET_ID=",
                                             { "Ref": "internalSubnet" },
                                             "\n",
-                                            "#kops update cluster --name=${CLUSTER_NAME} --yes\n"                                            
+                                            "kops update cluster --name=${CLUSTER_NAME} --yes\n"                                            
                                         ]
                                     ]
                                 },
@@ -1237,7 +1269,8 @@
                                             "#Install kubectl\n",
                                             "curl -Lk https://github.com/kubernetes/kubernetes/releases/download/v1.4.9/kubernetes.tar.gz -o /opt/kubernetes.tar.gz\n",
                                             "tar -zxvf /opt/kubernetes.tar.gz\n",
-                                            "ln -s /opt/aws/kubernetes/platforms/linux/amd64/kubectl /usr/local/bin/kubectl\n",
+                                            "mv /opt/aws/kubernetes/platforms/linux/amd64/kubectl /usr/local/bin/kubectl\n",
+                                            "chmod +x /usr/local/bin/kubectl\n",
                                             "#Install kops\n",
                                             "curl -Lk https://github.com/kubernetes/kops/releases/download/1.5.1/kops-linux-amd64 -o /opt/kops-linux-amd64\n",
                                             "chmod +x /opt/kops-linux-amd64\n",
@@ -1248,12 +1281,14 @@
                                             "echo export PATH=~/.local/bin:$PATH >> ~/.bashrc\n",
                                             "pip install awscli --upgrade --user\n",
                                             "#Write new id_rsa_pub file\n",
-                                            "echo $(sed  -n -e 's/^.*\\(ssh-rsa \\)/\\1/p' /root/.ssh/authorized_keys) > /root/.ssh/id_rsa.pub\n",
+                                            "echo $(sed  -n -e 's/^.*\\(ssh-rsa \\)/\\1/p' ~/.ssh/authorized_keys) > ~/.ssh/id_rsa.pub\n",
+                                            "cp ~/.ssh/id_rsa.pub /home/centos/.ssh/id_rsa.pub\n",
                                             "#Create K8s Cluster\n",                                                                                       
                                             "nohup /opt/create_cluster.sh &\n",
                                             "wait\n",
                                             "if [[ $? == 0 ]]; then\n",
                                             "nohup /opt/update_cluster.sh\n",
+                                            "wait\n",
                                             "else\n",
                                             "exit 12\n",
                                             "echo \"create_cluster.sh Failed!\"\n",
