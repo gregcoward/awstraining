@@ -1777,7 +1777,7 @@
                                             "echo \"create_cluster.sh Failed!\"\n",
                                             "fi\n",
                                             "wait\n",
-                                            "sleep 2\n",
+                                            "sleep 2m\n",
                                             "kubectl create -f /opt/k8ssecret.yaml -n kube-system\n",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
