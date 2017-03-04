@@ -1544,6 +1544,34 @@
                                 "owner": "root",
                                 "group": "root"
                             },
+                            "/opt/nginx.yaml": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "apiVersion: extensions/v1beta1\n",
+                                            "kind: Deployment\n",
+                                            "metadata:\n",
+                                            "name: my-nginx\n",
+                                            "spec:\n",
+                                            "replicas: 2\n",
+                                            "template:\n",
+                                            "    metadata:\n",
+                                            "    labels:\n",
+                                            "        run: my-nginx\n",
+                                            "    spec:\n",
+                                            "    containers:\n",
+                                            "    - name: my-nginx\n",
+                                            "        image: nginx\n",
+                                            "        ports:\n",
+                                            "        - containerPort: 80 \n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
                             "/opt/create_cluster.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1681,6 +1709,19 @@
                                         "",
                                         [
                                             "kubectl create -f calico.yaml -n kube-system\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/opt/deploy_k8s_workload.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "kubectl create -f nginx.yaml\n"
                                         ]
                                     ]
                                 },
