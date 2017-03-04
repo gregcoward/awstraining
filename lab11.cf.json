@@ -71,11 +71,13 @@
         },
         "accessKey": {
             "Type": "String",
-            "Description": "Access Key required to create the cluster."
+            "Description": "Access Key required to create the cluster.",
+            "NoEcho": "true"
         },
         "secretKey": {
             "Type": "String",
-            "Description": "Secret Key also required to create the cluster."
+            "Description": "Secret Key also required to create the cluster.",
+            "NoEcho": "true"
         },
         "KopsInstanceType": {
             "Description": "EC2 instance type",
