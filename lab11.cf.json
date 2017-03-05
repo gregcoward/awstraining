@@ -1815,7 +1815,7 @@
                                             "nohup /opt/create_cluster.sh &\n",
                                             "wait\n",
                                             "if [[ $? == 0 ]]; then\n",
-                                            "nohup /opt/update_cluster.sh\n",
+                                            "nohup /opt/update_cluster.sh &\n",
                                             "wait\n",
                                             "else\n",
                                             "echo \"create_cluster.sh Failed!\"\n",
@@ -1825,7 +1825,8 @@
                                             "cp /opt/aws/.kube/config /home/centos/.kube/config\n",
                                             "chown centos:centos /home/centos/.kube/config\n",
                                             "sleep 5m\n",
-                                            "nohup /opt/create_secret.sh\n",
+                                            "nohup /opt/create_secret.sh &\n",
+                                            "wait\n",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
