@@ -1084,7 +1084,10 @@
                                             "\n"
                                         ]
                                     ]
-                                }
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
                             },
                             "/root/.aws/config":{
                                 "content": {
@@ -1098,7 +1101,10 @@
                                             "\n"
                                         ]
                                     ]
-                                }
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
                             },
                             "/opt/k8ssecret.yaml": {
                                 "content": {
@@ -1133,8 +1139,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/f5_container_connector_k8s_config.yaml": {
                                 "content": {
@@ -1187,8 +1193,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/calico.yaml": {
                                 "content": {
@@ -1543,8 +1549,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/nginx.yaml": {
                                 "content": {
@@ -1571,8 +1577,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/create_cluster.sh": {
                                 "content": {
@@ -1612,8 +1618,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/delete_cluster.sh": {
                                 "content": {
@@ -1650,8 +1656,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },                        
                             "/opt/update_cluster.sh": {
                                 "content": {
@@ -1688,8 +1694,47 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/create_secret.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export PATH=/usr/local/bin:$PATH\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export KUBECONFIG=/opt/aws/.kube/config\n",
+                                            "export AWS_ACCESS_KEY_ID=",
+                                            { "Ref": "accessKey" },
+                                            "\n",
+                                            "export AWS_SECRET_ACCESS_KEY=",
+                                            { "Ref": "secretKey" },
+                                            "\n",
+                                            "export CLUSTER_NAME=",
+                                            { "Ref": "K8ClusterName" },
+                                            ".emeatraining.uk\n",
+                                            "export KOPS_STATE_STORE=s3://",
+                                            { "Ref": "s3Bucket" },
+                                            "\n",
+                                            "export VPC_ID=",
+                                            { "Ref": "StackVPC"},
+                                            "\n",
+                                            "export NETWORK_CIDR=",
+                                            { "Fn::GetAtt": ["StackVPC","CidrBlock"] },
+                                            "\n",
+                                            "export SUBNET_ID=",
+                                            { "Ref": "internalSubnet" },
+                                            "\n",
+                                            "kubectl create -f /opt/k8ssecret.yaml -n kube-system\n"                                           
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/deploy_f5_container_connector.sh": {
                                 "content": {
@@ -1702,8 +1747,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/deploy_calico.sh": {
                                 "content": {
@@ -1715,8 +1760,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/deploy_k8s_workload.sh": {
                                 "content": {
@@ -1728,8 +1773,8 @@
                                     ]
                                 },
                                 "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
+                                "owner": "centos",
+                                "group": "centos"
                             },
                             "/opt/appConfiguartion.sh": {
                                 "content": {
@@ -1773,12 +1818,13 @@
                                             "nohup /opt/update_cluster.sh\n",
                                             "wait\n",
                                             "else\n",
-                                            "exit 12\n",
                                             "echo \"create_cluster.sh Failed!\"\n",
+                                            "exit 12\n",                                            
                                             "fi\n",
-                                            "wait\n",
-                                            "sleep 2m\n",
-                                            "kubectl create -f /opt/k8ssecret.yaml -n kube-system\n",
+                                            "cp /opt/aws/.kube/config /home/centos/.kube/config\n",
+                                            "chown centos:centos /home/centos/.kube/config\n",
+                                            "sleep 5m\n",
+                                            "nohup /opt/create_secret.sh\n",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
