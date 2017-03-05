@@ -1821,6 +1821,7 @@
                                             "echo \"create_cluster.sh Failed!\"\n",
                                             "exit 12\n",                                            
                                             "fi\n",
+                                            "mkdir /home/centos/.kube\n",
                                             "cp /opt/aws/.kube/config /home/centos/.kube/config\n",
                                             "chown centos:centos /home/centos/.kube/config\n",
                                             "sleep 5m\n",
