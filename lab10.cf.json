@@ -1112,6 +1112,12 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
+                            "/opt/k8s-bigip-ctlr-master-26326.tar.gz":{
+                                "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/k8s-bigip-ctlr-master-26326.tar.gz",
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
                             "/opt/k8ssecret.yaml": {
                                 "content": {
                                     "Fn::Join": [
@@ -1833,6 +1839,7 @@
                                             "sleep 5m\n",
                                             "nohup /opt/create_secret.sh &\n",
                                             "wait\n",
+                                            "#ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /home/centos/privatekey.pem admin@ipaddress \"\"\n",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
