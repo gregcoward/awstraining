@@ -377,7 +377,7 @@
                 "group": "root"
               },
               "/opt/proxy-0-0-1.tgz": {
-                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/proxy_v0_0_1.tgz",
+                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/proxy-0-0-1.tgz",
                 "mode": "000644",
                 "owner": "root",
                 "group": "root"
