@@ -1,0 +1,67 @@
+{
+    "apiVersion": "extensions/v1beta1",
+    "kind": "Deployment",
+    "metadata": {
+        "name": "f5-k8s-controller",
+        "namespace": "kube-system"
+    },
+    "spec": {
+        "replicas": 1,
+        "template": {
+            "metadata": {
+                "name": "f5-k8s-controller",
+                "labels": {
+                    "app": "f5-k8s-controller"
+                }
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "name": "f5-k8s-controller",
+                        "image": "docker-registry.pdbld.f5net.com/velcro/k8s-bigip-ctlr:master-26326",
+                        "env": [
+                            {
+                                "name": "BIGIP_USERNAME",
+                                "valueFrom": {
+                                    "secretKeyRef": {
+                                        "name": "bigip-credentials",
+                                        "key": "username"
+                                    }
+                                }
+                            },
+                            {
+                                "name": "BIGIP_PASSWORD",
+                                "valueFrom": {
+                                    "secretKeyRef": {
+                                        "name": "bigip-credentials",
+                                        "key": "password"
+                                    }
+                                }
+                            },
+                            {
+                                "name": "BIGIP_URL",
+                                "valueFrom": {
+                                    "secretKeyRef": {
+                                        "name": "bigip-credentials",
+                                        "key": "url"
+                                    }
+                                }
+                            }
+                        ],
+                        "command": [
+                            "/app/bin/f5-k8s-controller"
+                        ],
+                        "args": [
+                            "--bigip-url=$(BIGIP_URL)",
+                            "--bigip-username=$(BIGIP_USERNAME)",
+                            "--bigip-password=$(BIGIP_PASSWORD)",
+                            "--namespace=default",
+                            "--bigip-partition=k8s",
+                            "--pool-member-type=cluster"
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+}

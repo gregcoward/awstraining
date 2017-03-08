@@ -774,6 +774,7 @@
                                             "echo \"KOPS SSH VIP creation complete.\"\n",
                                             "fi\n",
                                             "#\n",
+                                            "tmsh create sys folder /kubernetes\n",
                                             "#\n",
                                             "exit\n"
                                         ]
@@ -1006,7 +1007,14 @@
                                 {
                                     "Ref": "AWS::Region"
                                 },
-                                "\n"
+                                "\n",
+                                "if [[ $? -ne 0 ]]; then\n",
+                                "/opt/aws/bin/cfn-signal -e $? '",
+                                {
+                                    "Ref": "BIGIPWaitHandle"
+                                },
+                                "'\n",                                            
+                                "fi\n"
                             ]
                         ]
                     }
@@ -1110,13 +1118,15 @@
                                 "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/tstanley933.pem",
                                 "mode": "000400",
                                 "owner": "centos",
-                                "group": "centos"
+                                "group": "centos",
+                                "authentication": "S3AccessCreds"
                             },
                             "/opt/k8s-bigip-ctlr-master-26326.tar.gz":{
                                 "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/k8s-bigip-ctlr-master-26326.tar.gz",
                                 "mode": "000755",
                                 "owner": "centos",
-                                "group": "centos"
+                                "group": "centos",
+                                "authentication": "S3AccessCreds"
                             },
                             "/opt/k8ssecret.yaml": {
                                 "content": {
@@ -1154,53 +1164,21 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
-                            "/opt/f5_container_connector_k8s_config.yaml": {
+                            "/opt/f5_container_connector_k8s_config.json": {
                                 "content": {
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "apiVersion: extensions/v1beta1\n",
-                                            "kind: Deployment\n",
-                                            "metadata:\n",
-                                            "name: f5-k8s-controller\n",
-                                            "namespace: kube-system\n",
-                                            "spec:\n",
-                                            "replicas: 1\n",
-                                            "template:\n",
-                                            "    metadata:\n",
-                                            "    name: f5-k8s-controller\n",
-                                            "    labels:\n",
-                                            "        app: f5-k8s-controller\n",
-                                            "    spec:\n",
-                                            "    containers:\n",
-                                            "       - name: f5-k8s-controller\n",
-                                            "        # Specify the path to your image here\n",
-                                            "        image: \"docker-registry.pdbld.f5net.com/velcro/f5-k8s-controller:537117ac47dfa59952a33002c548b48bf8a5a939\"\n",
-                                            "        env:\n",
-                                            "            # Get sensitive values from the bigip-credentials secret\n",
-                                            "            - name: BIGIP_USERNAME\n",
-                                            "            valueFrom:\n",
-                                            "                secretKeyRef:\n",
-                                            "                name: bigip-credentials\n",
-                                            "                key: username\n",
-                                            "            - name: BIGIP_PASSWORD\n",
-                                            "            valueFrom:\n",
-                                            "                secretKeyRef:\n",
-                                            "                name: bigip-credentials\n",
-                                            "                key: password\n",
-                                            "            - name: BIGIP_URL\n",
-                                            "            valueFrom:\n",
-                                            "                secretKeyRef:\n",
-                                            "                name: bigip-credentials\n",
-                                            "                key: url\n",
-                                            "        command: [\"/app/bin/f5-k8s-controller\"]\n",
-                                            "        args:\n",
-                                            "            - \"--bigip-url=$(BIGIP_URL)\"\n",
-                                            "            - \"--bigip-username=$(BIGIP_USERNAME)\"\n",
-                                            "            - \"--bigip-password=$(BIGIP_PASSWORD)\"\n",
-                                            "            - \"--namespace=default\"\n",
-                                            "            - \"--bigip-partition=k8s\"\n",
-                                            "            - \"--pool-member-type=cluster\"\n"
+                                            "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":",
+                                            "\"f5-k8s-controller\",\"namespace\":\"kube-system\"},\"spec\":{\"replicas\":1,\"template\"",
+                                            ":{\"metadata\":{\"name\":\"f5-k8s-controller\",\"labels\":{\"app\":\"f5-k8s-controller\"}},",
+                                            "\"spec\":{\"containers\":[{\"name\":\"f5-k8s-controller\",\"image\":",
+                                            "\"localhost:5000/cc\",",
+                                            "\"env\":[{\"name\":\"BIGIP_USERNAME\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":",
+                                            "\"username\"}}},{\"name\":\"BIGIP_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":",
+                                            "\"password\"}}},{\"name\":\"BIGIP_URL\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":\"url\"}}}]",
+                                            ",\"command\":[\"/app/bin/k8s-bigip-ctlr\"],\"args\":[\"--bigip-url=$(BIGIP_URL)\",\"--bigip-username=$(BIGIP_USERNAME)\"",
+                                            ",\"--bigip-password=$(BIGIP_PASSWORD)\",\"--namespace=default\",\"--bigip-partition=kubernetes\",\"--pool-member-type=cluster\"]}]}}}}"
                                         ]
                                     ]
                                 },
@@ -1564,27 +1542,14 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
-                            "/opt/nginx.yaml": {
+                            "/opt/nginx.json": {
                                 "content": {
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "apiVersion: extensions/v1beta1\n",
-                                            "kind: Deployment\n",
-                                            "metadata:\n",
-                                            "name: my-nginx\n",
-                                            "spec:\n",
-                                            "replicas: 2\n",
-                                            "template:\n",
-                                            "    metadata:\n",
-                                            "    labels:\n",
-                                            "        run: my-nginx\n",
-                                            "    spec:\n",
-                                            "    containers:\n",
-                                            "    - name: my-nginx\n",
-                                            "        image: nginx\n",
-                                            "        ports:\n",
-                                            "        - containerPort: 80 \n"
+                                            "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"my-nginx\"},\"spec\":",
+                                            "{\"replicas\":2,\"template\":{\"metadata\":{\"labels\":{\"run\":\"my-nginx\"}},\"spec\":{\"containers\":[{\"name\"",
+                                            ":\"my-nginx\",\"image\":\"nginx\",\"ports\":[{\"containerPort\":80}]}]}}}}"
                                         ]
                                     ]
                                 },
@@ -1753,7 +1718,7 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "kubectl create -f /opt/f5_container_connector_k8s_config.yaml -n kube-system\n",
+                                            "kubectl create -f /opt/f5_container_connector_k8s_config.json -n kube-system\n",
                                             "kubectl get pods -n kube-system\n"
                                         ]
                                     ]
@@ -1767,7 +1732,7 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "kubectl create -f calico.yaml -n kube-system\n"
+                                            "kubectl create -f /opt/calico.yaml -n kube-system\n"
                                         ]
                                     ]
                                 },
@@ -1780,7 +1745,7 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "kubectl create -f nginx.yaml\n"
+                                            "kubectl create -f /opt/nginx.json\n"
                                         ]
                                     ]
                                 },
@@ -1798,6 +1763,7 @@
                                             "#Update Yum and system.\n",
                                             "yum clean all\n",
                                             "yum -y update\n",
+                                            "yum -y install bind-utils\n",
                                             "#Install jq\n",
                                             "curl -Lk https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -o /opt/jq-linux64\n",
                                             "chmod +x /opt/jq-linux64\n",
@@ -1834,6 +1800,7 @@
                                             "exit 12\n",                                            
                                             "fi\n",
                                             "mkdir /home/centos/.kube\n",
+                                            "chown centos:centos /home/centos/.kube\n",
                                             "cp /opt/aws/.kube/config /home/centos/.kube/config\n",
                                             "chown centos:centos /home/centos/.kube/config\n",
                                             "sleep 5m\n",
@@ -1859,6 +1826,14 @@
                                 "command": "/opt/signalDone.sh &>> /var/log/signal.log"
                             }
                         }
+                    }
+                },
+                "AWS::CloudFormation::Authentication": {
+                    "S3AccessCreds": {
+                        "type": "S3",
+                        "accessKeyId": { "Ref": "accessKey" },
+                        "secretKey": { "Ref": "secretKey" },
+                        "buckets": [ "f5awstraining2017" ]
                     }
                 }
             },
@@ -1920,7 +1895,14 @@
                                 {
                                     "Ref": "AWS::Region"
                                 },
-                                "\n"
+                                "\n",
+                                "if [[ $? -ne 0 ]]; then\n",
+                                "/opt/aws/bin/cfn-signal -e $? '",
+                                {
+                                    "Ref": "KopsInstanceWaitHandle"
+                                },
+                                "'\n",                                            
+                                "fi\n"
                             ]
                         ]
                     }
