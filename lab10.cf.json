@@ -1917,7 +1917,7 @@
                     "Ref": "KopsInstanceWaitHandle"
                 },
                 "Count": "1",
-                "Timeout": "1200"
+                "Timeout": "2100"
             }
         },
         "KopsInstanceWaitHandle": {
