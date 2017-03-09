@@ -1128,6 +1128,12 @@
                                 "group": "centos",
                                 "authentication": "S3AccessCreds"
                             },
+                            "/opt/calicoctl":{
+                                "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/k8s-bigip-ctlr-master-26326.tar.gz",
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos",
+                            },
                             "/opt/k8ssecret.yaml": {
                                 "content": {
                                     "Fn::Join": [
@@ -1713,6 +1719,45 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
+                            "/opt/cc_stage.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -x\n",
+                                            "function pushFiles() {\n",
+                                            "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/k8s-bigip-ctlr-master-26326.tar.gz admin@${1}:~/k8s-bigip-ctlr-master-26326.tar.gz\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker load -i ~/k8s-bigip-ctlr-master-26326.tar.gz\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker run -d -p 5000:5000 --restart=always --name registry registry:2\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker images\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker tag 93d8e97443f8 localhost:5000/cc\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker push localhost:5000/cc\"\n",
+                                            "}\n",
+                                            "# Get Master IP address\n",
+                                            "masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )\n",
+                                            "# Find Node IP addresses\n",
+                                            "kubectl get nodes | grep internal | cut -d\" \" -f1 | while read line\n",
+                                            "do\n",
+                                            "ipAddress=$(nslookup $line | awk '/^Address: / { print $2 }')\n",
+                                            "if [[ ${ipAddress} == ${masterIP} ]]; then\n",
+                                            "        echo \"Do nothing.\"\n",
+                                            "else\n",
+                                            "        echo ${ipAddress} >> /tmp/nodes\n",
+                                            "fi\n",
+                                            "done\n",
+                                            "#\n",
+                                            "exec 3</tmp/nodes\n",
+                                            "while IFS='' read -r -u 3 line || [[ -n \"$line\" ]]\n",
+                                            "do\n",
+                                            "pushFiles ${line}\n",
+                                            "done\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
                             "/opt/deploy_f5_container_connector.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1803,10 +1848,11 @@
                                             "chown centos:centos /home/centos/.kube\n",
                                             "cp /opt/aws/.kube/config /home/centos/.kube/config\n",
                                             "chown centos:centos /home/centos/.kube/config\n",
-                                            "sleep 5m\n",
+                                            "sleep 7m\n",
                                             "nohup /opt/create_secret.sh &\n",
                                             "wait\n",
-                                            "#ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /home/centos/privatekey.pem admin@ipaddress \"\"\n",
+                                            "nohup /opt/cc_stage.sh &\n",
+                                            "wait\n",
                                             "date\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
