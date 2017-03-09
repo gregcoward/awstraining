@@ -504,15 +504,16 @@
             "Type": "AWS::EC2::NetworkInterface"
         },
         "BigipInternalInterface": {
+            "DependsOn" : [ "KopsInstanceSecurityGroup" ],
             "Properties": {
                 "Description": "Internal Interface for the BIG-IP",
                 "GroupSet": [
                     {
-                        "Ref": "BIGIPSecurityGroup"
+                        "Ref": "KopsInstanceSecurityGroup"
                     }
                 ],
                 "SubnetId": {
-                    "Ref": "KopsInstanceSecurityGroup"
+                    "Ref": "internalSubnet"
                 }
             },
             "Type": "AWS::EC2::NetworkInterface"
@@ -1204,7 +1205,7 @@
                                         [
                                             "{\"kind\":\"ConfigMap\",\"apiVersion\":\"v1\",\"metadata\":{\"name\":\"calico-config\",\"namespace\":\"kube-system\"},\"data\"",
                                             ":{\"etcd_endpoints\":\"http://",
-                                            {},
+                                            "REPLACEME",
                                             ":4001\",\"calico_backend\":\"bird\",\"cni_network_config\":\"{\n    \"name\": \"k8s-pod-network\",\n    \"type\": \"calico\",",
                                             "\n    \"etcd_endpoints\": \"__ETCD_ENDPOINTS__\",\n    \"etcd_key_file\": \"__ETCD_KEY_FILE__\",\n    \"etcd_cert_file\"",
                                             ": \"__ETCD_CERT_FILE__\",\n    \"etcd_ca_cert_file\": \"__ETCD_CA_CERT_FILE__\",\n    \"log_level\": \"info\",\n    \"ipam\"",
