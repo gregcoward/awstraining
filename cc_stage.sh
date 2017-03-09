@@ -8,7 +8,7 @@ function pushFiles() {
     ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} "sudo docker tag 93d8e97443f8 localhost:5000/cc"
     ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} "sudo docker push localhost:5000/cc"
     ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} "chmod +x ~/calicoctl"
-    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} "sudo ~/calicoctl /usr/bin"
+    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} "sudo mv ~/calicoctl /usr/bin"
 }
 # Get Master IP address
 masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )
