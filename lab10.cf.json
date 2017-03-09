@@ -506,8 +506,13 @@
         "BigipInternalInterface": {
             "Properties": {
                 "Description": "Internal Interface for the BIG-IP",
+                "GroupSet": [
+                    {
+                        "Ref": "BIGIPSecurityGroup"
+                    }
+                ],
                 "SubnetId": {
-                    "Ref": "internalSubnet"
+                    "Ref": "KopsInstanceSecurityGroup"
                 }
             },
             "Type": "AWS::EC2::NetworkInterface"
