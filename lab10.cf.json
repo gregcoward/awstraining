@@ -1439,7 +1439,7 @@
                                             "#!/bin/bash -xe\n",
                                             "#\n",
                                             "masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )\n",
-                                            "sed -i \"s|REPLACEME|$masterIP|\" /opt/calico.yaml\n",
+                                            "sudo sed -i \"s|REPLACEME|$masterIP|\" /opt/calico.yaml\n",
                                             "kubectl create -f /opt/calico.yaml -n kube-system\n"
                                         ]
                                     ]
