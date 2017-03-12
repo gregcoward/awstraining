@@ -1127,14 +1127,14 @@
                                 "group": "root"
                             },
                             "/home/centos/privatekey.pem":{
-                                "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/tstanley933.pem",
+                                "source": "https://s3.amazonaws.com/tafyf/gc2.pem",
                                 "mode": "000400",
                                 "owner": "centos",
                                 "group": "centos",
                                 "authentication": "S3AccessCreds"
                             },
                             "/opt/k8s-bigip-ctlr-master-26326.tar.gz":{
-                                "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/k8s-bigip-ctlr-master-26326.tar.gz",
+                                "source": "https://s3.amazonaws.com/tafyf/k8s-bigip-ctlr-master-26326.tar.gz",
                                 "mode": "000755",
                                 "owner": "centos",
                                 "group": "centos",
