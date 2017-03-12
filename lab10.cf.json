@@ -1243,6 +1243,27 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
+                            "/opt/bgp_peers.yaml":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "apiVersion: v1\n",
+                                            "kind: bgpPeer\n",
+                                            "metadata:\n",
+                                            "  peerIP: ",
+                                            { "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"] },
+                                            "\n",
+                                            "  scope: global\n",
+                                            "spec:\n",
+                                            "  asNumber: 64511\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
                             "/opt/nginx.json": {
                                 "content": {
                                     "Fn::Join": [
@@ -1464,6 +1485,7 @@
                                             "#\n",
                                             "function pushFiles() {\n",
                                             "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/bgp_peers.sh admin@${1}:~/bgp_peers.sh\n",
+                                            "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/bgp_peers.yaml admin@${1}:~/bgp_peers.yaml\n",
                                             "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"chmod +x ~/bgp_peers.sh\"\n",
                                             "}\n",
                                             "masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )\n",
@@ -1488,11 +1510,7 @@
                                         [
                                             "#!/bin/bash -xe\n",
                                             "#\n",
-                                            "cat << EOF | ETCD_ENDPOINTS=http://REPLACEME:4001 calicoctl create -f '",
-                                            "{\"apiVersion\":\"v1\",\"kind\":\"bgpPeer\",\"metadata\":{\"peerIP\":\"",
-                                            { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"] },
-                                            "\",\"scope\":\"global\"},\"spec\":{\"asNumber\":22317}}'",
-                                            "\n"
+                                            "sudo ETCD_ENDPOINTS=http://REPLACEME:4001 calicoctl create -f ~/bgp_peers.yaml\n"
                                         ]
                                     ]
                                 },
