@@ -115,7 +115,7 @@
     "WindowsAMI": {
       "Description": "Windows Version and Region AMI",
       "Type": "String",
-      "Default": "ami-bdb618dd"
+      "Default": "ami-6e833e0e"
     }
   },
   "Resources": {
