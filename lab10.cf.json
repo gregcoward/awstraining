@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single CentOS 7 server then uploads the App Connector tarball and starts the App Connector, finally this template creates two CentOS 7 Apache content servers.",
+    "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a single 3 NIC BIG-IP, CentOS 7 server as a KOPS tool-VM then builds a 3 node Kubernetes Cluster.",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
