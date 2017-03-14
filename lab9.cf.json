@@ -77,13 +77,12 @@
       "AllowedValues": [
         "t1.micro",
         "t2.micro",
-        "t2.small",
-        "m1.small"
+        "t2.small"
       ],
       "ConstraintDescription": "Choose one of the following."
     },
     "appConnectorAMI": {
-      "Description": "Ubuntu Version and Region AMI",
+      "Description": "Centos 7 and Region AMI",
       "Type": "String",
       "Default": "ami-d2c924b2",
       "AllowedValues": [
