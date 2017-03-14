@@ -1145,62 +1145,7 @@
                                 "mode": "000755",
                                 "owner": "centos",
                                 "group": "centos"
-                            },
-                            "/opt/k8ssecret.yaml": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "apiVersion: v1\n",
-                                            "items:\n",
-                                            "- apiVersion: v1\n",
-                                            "  data:\n",
-                                            "    password: ",
-                                            { "Fn::Base64": { "Ref": "adminPassword" } },
-                                            "\n",
-                                            "    url: ",
-                                            { "Fn::Base64": { "Fn::GetAtt": ["BigipMGMTInterface","PrimaryPrivateIpAddress"] }},
-                                            "\n",
-                                            "    username: ",
-                                            { "Fn::Base64": { "Ref": "adminUsername" } },
-                                            "\n",
-                                            "  kind: Secret\n",
-                                            "  metadata:\n",
-                                            "    name: bigip-credentials\n",
-                                            "    namespace: kube-system\n",
-                                            "    resourceVersion: \"428661\"\n",
-                                            "    selfLink: /api/v1/namespaces/kube-system/secrets/bigip-credentials\n",
-                                            "  type: Opaque\n",
-                                            "kind: List\n",
-                                            "metadata: {}\n",
-                                            "resourceVersion: \"\"\n",
-                                            "selfLink: \"\"\n"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "centos",
-                                "group": "centos"
-                            },
-                            "/opt/f5_container_connector_k8s_config.json": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"f5-k8s-controller\",\"namespace\":\"kube-system\"},\"spec\":{\"replicas\":1,\"template\":{\"metadata\":{\"name\":\"f5-k8s-controller\",\"labels\":{\"app\":\"f5-k8s-controller\"}},\"spec\":{\"containers\":[{\"name\":\"f5-k8s-controller\",\"image\":\"localhost:5000/cc\",\"env\":[{\"name\":\"BIGIP_USERNAME\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":\"username\"}}},{\"name\":\"BIGIP_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":\"password\"}}},{\"name\":\"BIGIP_URL\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":\"url\"}}}],\"command\":[\"/app/bin/k8s-bigip-ctlr\"],\"args\":[\"--bigip-url=$(BIGIP_URL)\",\"--bigip-username=$(BIGIP_USERNAME)\",\"--bigip-password=$(BIGIP_PASSWORD)\",\"--namespace=default\",\"--bigip-partition=kubernetes\",\"--pool-member-type=cluster\"]}]}}}}"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "centos",
-                                "group": "centos"
-                            },
-                            "/opt/calico.yaml":{
-                                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/calico.yaml",
-                                "mode": "000755",
-                                "owner": "centos",
-                                "group": "centos"
-                            },
+                            },                                                     
                             "/opt/vs-config.yaml":{
                                 "content": {
                                     "Fn::Join": [
@@ -1209,76 +1154,43 @@
                                             "kind: ConfigMap\n",
                                             "apiVersion: v1\n",
                                             "metadata:\n",
-                                            "name: example-vs\n",
-                                            "namespace: default\n",
-                                            "labels:\n",
+                                            "  name: example-vs\n",
+                                            "  namespace: default\n",
+                                            "  labels:\n",
                                             "    f5type: virtual-server\n",
                                             "data:\n",
-                                            "schema: \"f5schemadb://bigip-virtual-server_v0.1.2.json\"\n",
-                                            "data: |\n",
-                                            {
-                                                "Fn::Join": [
-                                                    "",
-                                                    [
-                                                        "{\"virtualServer\":{\"backend\":{\"servicePort\":80,\"serviceName\":\"nginx\",\"healthMonitors\":[{\"interval\":30,\"protocol\":\"http\",\"send\":\"GET\",\"timeout\":86400}]},\"frontend\":{\"virtualAddress\":{\"port\":80,\"bindAddr\":\"",
-                                                        {
-                                                            "Fn::Select": [
-                                                                "0",
-                                                                {
-                                                                    "Fn::GetAtt": [
-                                                                        "BigipExternalInterface",
-                                                                        "SecondaryPrivateIpAddresses"
-                                                                    ]
-                                                                }
-                                                            ]
-                                                        },
-                                                        "\"},\"partition\":\"kubernetes\",\"balance\":\"round-robin\",\"mode\":\"http\"}}}\n"
-                                                    ]
-                                                ]
-                                            }
+                                            "  schema: \"f5schemadb://bigip-virtual-server_v0.1.2.json\"\n",
+                                            "  data: |\n",
+                                            "    {\n",
+                                            "      \"virtualServer\": {\n",
+                                            "        \"backend\": {\n",
+                                            "          \"servicePort\": 80,\n",
+                                            "          \"serviceName\": \"nginx\",\n",
+                                            "          \"healthMonitors\": [{\n",
+                                            "            \"interval\": 30,\n",
+                                            "            \"protocol\": \"http\",\n",
+                                            "            \"send\": \"GET\",\n",
+                                            "            \"timeout\": 86400\n",
+                                            "          }]\n",
+                                            "        },\n",
+                                            "        \"frontend\": {\n",
+                                            "          \"virtualAddress\": {\n",
+                                            "            \"port\": 80,\n",
+                                            "            \"bindAddr\": \"",{"Fn::Select": ["0",{"Fn::GetAtt": ["BigipExternalInterface","SecondaryPrivateIpAddresses"]}]},"\"\n",
+                                            "          },\n",
+                                            "          \"partition\": \"kubernetes\",\n",
+                                            "          \"balance\": \"round-robin\",\n",
+                                            "          \"mode\": \"http\"\n",
+                                            "        }\n",
+                                            "      }\n",
+                                            "    }\n"
                                         ]
                                     ]
                                 },
                                 "mode": "000755",
                                 "owner": "centos",
                                 "group": "centos"
-                            },
-                            "/opt/bgp_peers.yaml":{
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "apiVersion: v1\n",
-                                            "kind: bgpPeer\n",
-                                            "metadata:\n",
-                                            "  peerIP: ",
-                                            { "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"] },
-                                            "\n",
-                                            "  scope: global\n",
-                                            "spec:\n",
-                                            "  asNumber: 64511\n"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "centos",
-                                "group": "centos"
-                            },
-                            "/opt/nginx.json": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"my-nginx\"},\"spec\":",
-                                            "{\"replicas\":2,\"template\":{\"metadata\":{\"labels\":{\"run\":\"my-nginx\"}},\"spec\":{\"containers\":[{\"name\"",
-                                            ":\"my-nginx\",\"image\":\"nginx\",\"ports\":[{\"containerPort\":80}]}]}}}}"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "centos",
-                                "group": "centos"
-                            },
+                            },                                                        
                             "/opt/create_cluster.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1402,31 +1314,13 @@
                                         "",
                                         [
                                             "#!/bin/bash -xe\n",
-                                            "export PATH=~/.local/bin:$PATH\n",
-                                            "export PATH=/usr/local/bin:$PATH\n",
-                                            "export PATH=~/.local/bin:$PATH\n",                                        
-                                            "export AWS_ACCESS_KEY_ID=",
-                                            { "Ref": "accessKey" },
-                                            "\n",
-                                            "export AWS_SECRET_ACCESS_KEY=",
-                                            { "Ref": "secretKey" },
-                                            "\n",
-                                            "export CLUSTER_NAME=",
-                                            { "Ref": "K8ClusterName" },
-                                            ".emeatraining.uk\n",
-                                            "export KOPS_STATE_STORE=s3://",
-                                            { "Ref": "s3Bucket" },
-                                            "\n",
-                                            "export VPC_ID=",
-                                            { "Ref": "StackVPC"},
-                                            "\n",
-                                            "export NETWORK_CIDR=",
-                                            { "Fn::GetAtt": ["StackVPC","CidrBlock"] },
-                                            "\n",
-                                            "export SUBNET_ID=",
-                                            { "Ref": "internalSubnet" },
-                                            "\n",
-                                            "kubectl create -f /opt/k8ssecret.yaml -n kube-system\n"                                           
+                                            "kubectl create secret generic bigip-credentials --namespace kube-system --from-literal=username=",
+                                            { "Ref": "adminUsername" },
+                                            " --from-literal=password=",
+                                            { "Ref": "adminPassword" },
+                                            " --from-literal=url=",
+                                            { "Fn::GetAtt": ["BigipMGMTInterface","PrimaryPrivateIpAddress"] },
+                                            "\n"
                                         ]
                                     ]
                                 },
@@ -1476,6 +1370,25 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
+                            "/opt/bgp_peers.yaml":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "apiVersion: v1\n",
+                                            "kind: bgpPeer\n",
+                                            "metadata:\n",
+                                            "  peerIP: ",{ "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"] },"\n",
+                                            "  scope: global\n",
+                                            "spec:\n",
+                                            "  asNumber: 64511\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
                             "/opt/fix_bgp_peers.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1488,9 +1401,12 @@
                                             "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/bgp_peers.yaml admin@${1}:~/bgp_peers.yaml\n",
                                             "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"chmod +x ~/bgp_peers.sh\"\n",
                                             "}\n",
+                                            "#Find the IP address of the Master of the Kubernetes cluster and \n",
+                                            "#replace put it into the bgp_peers.sh file.\n",
                                             "masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )\n",
                                             "sudo sed -i \"s|REPLACEME|$masterIP|\" /opt/bgp_peers.sh\n",
                                             "#\n",
+                                            "#Push the files to each of the nodes.\n",
                                             "exec 3</tmp/nodes\n",
                                             "while IFS='' read -r -u 3 line || [[ -n \"$line\" ]] \n",
                                             "do\n",
@@ -1518,6 +1434,19 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
+                            "/opt/f5_container_connector_k8s_config.json": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"f5-k8s-controller\",\"namespace\":\"kube-system\"},\"spec\":{\"replicas\":1,\"template\":{\"metadata\":{\"name\":\"f5-k8s-controller\",\"labels\":{\"app\":\"f5-k8s-controller\"}},\"spec\":{\"containers\":[{\"name\":\"f5-k8s-controller\",\"image\":\"localhost:5000/cc\",\"env\":[{\"name\":\"BIGIP_USERNAME\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":\"username\"}}},{\"name\":\"BIGIP_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":\"password\"}}},{\"name\":\"BIGIP_URL\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"bigip-credentials\",\"key\":\"url\"}}}],\"command\":[\"/app/bin/k8s-bigip-ctlr\"],\"args\":[\"--bigip-url=$(BIGIP_URL)\",\"--bigip-username=$(BIGIP_USERNAME)\",\"--bigip-password=$(BIGIP_PASSWORD)\",\"--namespace=default\",\"--bigip-partition=kubernetes\",\"--pool-member-type=cluster\"]}]}}}}"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
                             "/opt/deploy_f5_container_connector.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1528,6 +1457,12 @@
                                         ]
                                     ]
                                 },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/calico.yaml":{
+                                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/calico.yaml",
                                 "mode": "000755",
                                 "owner": "centos",
                                 "group": "centos"
@@ -1549,12 +1484,33 @@
                                 "owner": "centos",
                                 "group": "centos"
                             },
-                            "/opt/deploy_k8s_workload.sh": {
+                            "/opt/nginx.json": {
                                 "content": {
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "kubectl create -f /opt/nginx.json\n"
+                                            "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"my-nginx\"},\"spec\":",
+                                            "{\"replicas\":2,\"template\":{\"metadata\":{\"labels\":{\"run\":\"my-nginx\"}},\"spec\":{\"containers\":[{\"name\"",
+                                            ":\"my-nginx\",\"image\":\"nginx\",\"ports\":[{\"containerPort\":80}]}]}}}}"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/deploy_nginx_workload.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#\n",
+                                            "#Deploy the NGINX workload containers.\n",
+                                            "kubectl create -f /opt/nginx.json\n",
+                                            "#\n",
+                                            "#Expose the port the NGINX servers will listen on.\n",
+                                            "kubectl expose deployment my-nginx --port=80 --type=NodePort\n"
                                         ]
                                     ]
                                 },
@@ -1570,58 +1526,74 @@
                                             "#!/bin/bash -xe\n",
                                             "#\n",
                                             "#Update Yum and system.\n",
+                                            "echo **********Update Yum and system.**********\n",
                                             "yum clean all\n",
                                             "yum -y update\n",
                                             "yum -y install bind-utils\n",
                                             "#Install jq\n",
+                                            "echo **********Install jq.**********\n",
                                             "curl -Lk https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -o /opt/jq-linux64\n",
                                             "chmod +x /opt/jq-linux64\n",
                                             "ln -s /opt/jq-linux64 /usr/local/bin/jq\n",
                                             "#Install kubectl\n",
+                                            "echo **********Install kubectl.**********\n",
                                             "curl -Lk https://github.com/kubernetes/kubernetes/releases/download/v1.4.9/kubernetes.tar.gz -o /opt/kubernetes.tar.gz\n",
                                             "tar -zxvf /opt/kubernetes.tar.gz\n",
                                             "mv /opt/aws/kubernetes/platforms/linux/amd64/kubectl /usr/local/bin/kubectl\n",
                                             "chmod +x /usr/local/bin/kubectl\n",
                                             "#Install kops\n",
+                                            "echo **********Install KOPS.**********\n",
                                             "curl -Lk https://github.com/kubernetes/kops/releases/download/1.5.1/kops-linux-amd64 -o /opt/kops-linux-amd64\n",
                                             "chmod +x /opt/kops-linux-amd64\n",
                                             "mv /opt/kops-linux-amd64 /usr/local/bin/kops\n",
+                                            "echo **********Install PIP.**********\n",
                                             "curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
                                             "python /opt/get-pip.py --user\n",
                                             "export PATH=~/.local/bin:$PATH\n",
                                             "echo export PATH=~/.local/bin:$PATH >> ~/.bashrc\n",
+                                            "echo **********Install AWS CLI.**********\n",
                                             "pip install awscli --upgrade --user\n",
                                             "#Write new id_rsa_pub file\n",
+                                            "echo **********Write new id_rsa_pub file.**********\n",
                                             "echo $(sed  -n -e 's/^.*\\(ssh-rsa \\)/\\1/p' ~/.ssh/authorized_keys) > ~/.ssh/id_rsa.pub\n",
                                             "cp ~/.ssh/id_rsa.pub /home/centos/.ssh/id_rsa.pub\n",
                                             "cp ~/.ssh/id_rsa.pub /opt/id_rsa.pub\n",
                                             "chmod 400 ~/.ssh/id_rsa.pub\n",
                                             "chmod 400 /home/centos/.ssh/id_rsa.pub\n",
                                             "chmod 400 /opt/id_rsa.pub\n",
-                                            "#Create K8s Cluster\n",                                                                                       
+                                            "#Create K8s Cluster\n",     
+                                            "echo **********Create the K's Cluster.**********\n",                                                                                  
                                             "nohup /opt/create_cluster.sh &\n",
                                             "wait\n",
                                             "if [[ $? == 0 ]]; then\n",
+                                            "echo **********Update to deploy the K8's Cluster.**********\n",
                                             "nohup /opt/update_cluster.sh &\n",
                                             "wait\n",
                                             "else\n",
                                             "echo \"create_cluster.sh Failed!\"\n",
                                             "exit 12\n",                                            
                                             "fi\n",
+                                            "echo **********Move kube config file to the proper directories.**********\n",
                                             "mkdir /home/centos/.kube\n",
                                             "chown centos:centos /home/centos/.kube\n",
                                             "cp /opt/aws/.kube/config /home/centos/.kube/config\n",
                                             "chown centos:centos /home/centos/.kube/config\n",
+                                            "echo **********Wait 7 minutes while the K8's cluster builds.**********\n",
                                             "sleep 7m\n",
+                                            "echo **********Create the BIG-IP secret that CC uses to login to the BIG-IP with and control it.**********\n",
                                             "nohup /opt/create_secret.sh &\n",
                                             "wait\n",
+                                            "echo **********Stage the Container Connector in a local respository container on each of the K8's nodes.**********\n",
                                             "nohup /opt/cc_stage.sh &\n",
                                             "wait\n",
+                                            "echo **********Deploy Calico for BGP Route Summarization.**********\n",
                                             "nohup /opt/deploy_calico.sh &\n",
-                                            "wait\n",
-                                            "date\n",
+                                            "wait\n",                                            
+                                            "echo **********Fix the bgp_peers.sh file with the correct IP information for the K8's master node.**********\n",
                                             "nohup /opt/fix_bgp_peers.sh &\n",
                                             "wait\n",
+                                            "date\n",
+                                            "#**********Delete the K8's secret file that contains sensitive data.**********\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
                                             "\n"
                                         ]

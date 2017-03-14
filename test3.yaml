@@ -1,0 +1,27 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: example-vs
+  namespace: kube-system
+  labels:
+    f5type: virtual-server
+data:
+  schema: "f5schemadb://bigip-virtual-server_v0.1.1.json"
+  data: |
+    {
+      "virtualServer": {
+        "frontend": {
+          "balance": "round-robin",
+          "mode": "http",
+          "partition": "kubernetes",
+          "virtualAddress": {
+            "bindAddr": "10.10.10.182",
+            "port": 80
+          }
+        },
+        "backend": {
+          "serviceName": "my-nginx",
+          "servicePort": 80
+        }
+      }
+    }

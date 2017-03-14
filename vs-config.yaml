@@ -31,3 +31,5 @@ data:
         }
       }
     }
+
+    {"Fn::Select": ["0",{"Fn::GetAtt": ["BigipExternalInterface","SecondaryPrivateIpAddresses"]}]}
