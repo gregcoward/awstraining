@@ -1725,7 +1725,7 @@
                                             "    nohup /opt/deploy_calico.sh &\n",
                                             "    wait\n", 
                                             "}\n",
-                                            "deploayCalico\n",
+                                            "deployCalico\n",
                                             "if [[ $? == 0 ]]; then\n",
                                             "    echo \"**********Deploy Calico Succeeded.**********\"\n",
                                             "else\n",
