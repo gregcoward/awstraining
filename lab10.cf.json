@@ -494,6 +494,26 @@
                 }
             }
         },
+        "BIGIPExternalVIPEip": {
+            "Type": "AWS::EC2::EIP"
+        },
+        "BIGIPExternalVIPEipAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "BIGIPExternalVIPEip",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "BigipExternalInterface"
+                },
+                "PrivateIpAddress": {
+                    "Fn::Select": ["0",{"Fn::GetAtt": ["BigipExternalInterface","SecondaryPrivateIpAddresses"]}]
+                }
+            }
+        },
         "BigipExternalInterface": {
             "Properties": {
                 "Description": "Public External Interface for the BIG-IP",
