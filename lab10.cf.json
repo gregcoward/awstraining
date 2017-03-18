@@ -1204,11 +1204,11 @@
                                             "      \"virtualServer\": {\n",
                                             "        \"backend\": {\n",
                                             "          \"servicePort\": 80,\n",
-                                            "          \"serviceName\": \"nginx\",\n",
+                                            "          \"serviceName\": \"my-nginx\",\n",
                                             "          \"healthMonitors\": [{\n",
                                             "            \"interval\": 30,\n",
                                             "            \"protocol\": \"http\",\n",
-                                            "            \"send\": \"GET\",\n",
+                                            "            \"send\": \"GET /\\\\r\\\\n\",\n",
                                             "            \"timeout\": 86400\n",
                                             "          }]\n",
                                             "        },\n",
@@ -1229,7 +1229,37 @@
                                 "mode": "000755",
                                 "owner": "centos",
                                 "group": "centos"
-                            },                                                        
+                            },
+                            "/opt/create_configmap.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "kubectl create -f /opt/vs-config.yaml",                                            
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },   
+                            "/opt/expose_service.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#Expose the port the NGINX servers will listen on.\n",
+                                            "kubectl expose deployment my-nginx --port=80 --type=NodePort\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },                                                  
                             "/opt/create_cluster.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -1547,9 +1577,7 @@
                                             "#\n",
                                             "#Deploy the NGINX workload containers.\n",
                                             "kubectl create -f /opt/nginx.json\n",
-                                            "#\n",
-                                            "#Expose the port the NGINX servers will listen on.\n",
-                                            "kubectl expose deployment my-nginx --port=80 --type=NodePort\n"
+                                            "#\n"                                        
                                         ]
                                     ]
                                 },
