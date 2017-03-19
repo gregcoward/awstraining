@@ -1915,8 +1915,8 @@
         }
     },
     "Outputs": {
-        "KopsSshURL": {
-            "Description": "The URL to connect to the KOPS box.",
+        "Tool-VM": {
+            "Description": "The IP address to connect to the Tool-VM jump box.",
             "Value": {
                 "Fn::Join": [
                     "",
@@ -1928,8 +1928,8 @@
                 ]
             }
         },
-        "BIGIPInstance": {
-            "Description": "The information required to add this instance as a node in the Applicaiton Connector.",
+        "BIGIP-GUI": {
+            "Description": "The URL to connect to the BIG-IP management GUI.",
             "Value": {
                 "Fn::Join": [
                     "",
@@ -1940,6 +1940,30 @@
                                 "BIGIPInstance",
                                 "PublicDnsName"
                             ]
+                        }
+                    ]
+                ]
+            }
+        },
+        "Private-VIP-IP{": {
+            "Description": "The private IP address that will be used to configure the VIP for the application.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {"Fn::Select": ["0",{"Fn::GetAtt": ["BigipExternalInterface","SecondaryPrivateIpAddresses"]}]}
+                    ]
+                ]
+            }
+        },
+        "External-VIP-IP": {
+            "Description": "The external IP address to connect to in order to access the applicaiton from the Internet.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {
+                            "Ref": "BIGIPExternalVIPEip"
                         }
                     ]
                 ]
