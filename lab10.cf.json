@@ -1915,7 +1915,7 @@
         }
     },
     "Outputs": {
-        "Tool-VM": {
+        "ToolVM": {
             "Description": "The IP address to connect to the Tool-VM jump box.",
             "Value": {
                 "Fn::Join": [
@@ -1928,7 +1928,7 @@
                 ]
             }
         },
-        "BIGIP-GUI": {
+        "BIGIPGUI": {
             "Description": "The URL to connect to the BIG-IP management GUI.",
             "Value": {
                 "Fn::Join": [
@@ -1945,7 +1945,7 @@
                 ]
             }
         },
-        "Private-VIP-IP{": {
+        "PrivateVIPIP": {
             "Description": "The private IP address that will be used to configure the VIP for the application.",
             "Value": {
                 "Fn::Join": [
@@ -1956,7 +1956,7 @@
                 ]
             }
         },
-        "External-VIP-IP": {
+        "ExternalVIPIP": {
             "Description": "The external IP address to connect to in order to access the applicaiton from the Internet.",
             "Value": {
                 "Fn::Join": [
