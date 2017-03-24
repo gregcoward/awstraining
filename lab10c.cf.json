@@ -1,0 +1,1017 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template creates a full deployment of a VPC and all supporting infrastructure as well as a CentOS 7 server deployed as a KOPS tool-VM then builds a 3 node Kubernetes Cluster.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Basics"
+                    },
+                    "Parameters": [
+                        "KeyName",
+                        "adminUsername",
+                        "adminPassword",
+                        "accessKey",
+                        "secretKey",
+                        "KopsInstanceName",
+                        "K8ClusterName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Size"
+                    },
+                    "Parameters": [
+                        "KopsInstanceType"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Settings"
+                    },
+                    "Parameters": [
+                        "KopsInstanceAMI",
+                        "sshKeyS3Uri",
+                        "containerConnectorS3Uri"
+                    ]
+                }
+            ],
+            "ParameterLabels": {}
+        }
+    },
+    "Parameters": {
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
+        },
+        "K8ClusterName": {
+            "Description": "The name of the BIG-IP.",
+            "Type": "String"
+        },
+        "KopsInstanceName": {
+            "Description": "The name of the application connector.",
+            "Type": "String",
+            "Default": "KopsInstance"
+        },
+        "accessKey": {
+            "Type": "String",
+            "Description": "Access Key required to create the cluster.",
+            "NoEcho": "true"
+        },
+        "secretKey": {
+            "Type": "String",
+            "Description": "Secret Key also required to create the cluster.",
+            "NoEcho": "true"
+        },
+        "KopsInstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "t2.medium",
+            "AllowedValues": [
+                "t1.micro",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "m1.small",
+                "m3.medium"
+            ],
+            "ConstraintDescription": "Choose one of the following."
+        },
+        "KopsInstanceAMI": {
+            "Description": "Ubuntu Version and Region AMI",
+            "Type": "String",
+            "Default": "ami-d2c924b2",
+            "AllowedValues": [
+                "ami-d2c924b2",
+                "ami-6d1c2007",
+                "ami-6a2d760f"
+            ]
+        },
+        "sshKeyS3Uri": {
+            "Type": "String",
+            "Description": "Paste in the S3 location of the SSH Private Key."            
+        },
+        "containerConnectorS3Uri": {
+            "Type": "String",
+            "Description": "Paste in the S3 location of the F5 Conatiner Connector tar ball."
+        }
+    },
+    "Resources": {
+        "StackVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "EnableDnsSupport": "true",
+                "EnableDnsHostnames": "true",
+                "CidrBlock": "10.10.0.0/16",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "VPC-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "externalSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "AvailabilityZone": {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
+                "CidrBlock": "10.10.1.0/24",
+                "MapPublicIpOnLaunch": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "externalSubnet"
+                    }
+                ]
+            }
+        },
+        "StackInternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "InternetGateway-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "AttachGateway": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "StackInternetGateway"
+                }
+            }
+        },
+        "ExternalRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "ExternalRouteTable-",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "ExternalRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "ExternalRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "StackInternetGateway"
+                }
+            }
+        },
+        "ExternalSubnetRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "externalSubnet"
+                },
+                "RouteTableId": {
+                    "Ref": "ExternalRouteTable"
+                }
+            }
+        },
+        "s3Bucket": {
+            "Type" : "AWS::S3::Bucket",
+            "Properties" : {
+                "AccessControl" : "PublicReadWrite"
+            }
+        },
+        "KopsInstanceSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable connectivity from the other subnets",
+                "VpcId": {
+                    "Ref": "StackVPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": "10.10.0.0/16"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "KopsInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "config": {
+                        "files": {
+                            "/opt/signalDone.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "/opt/aws/bin/cfn-signal -e $? '",
+                                            {
+                                                "Ref": "KopsInstanceWaitHandle"
+                                            },
+                                            "'\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/opt/signalFailure.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "/opt/aws/bin/cfn-signal --success false '",
+                                            {
+                                                "Ref": "KopsInstanceWaitHandle"
+                                            },
+                                            "'\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/root/.aws/credentials":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[default]\n",
+                                            "aws_access_key_id = ",
+                                            { "Ref": "accessKey" },
+                                            "\n",
+                                            "aws_secret_access_key = ",
+                                            { "Ref": "secretKey" },
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/root/.aws/config":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[default]\n",
+                                            "output = json\n",
+                                            "region = ",
+                                            { "Ref": "AWS::Region" },
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/home/centos/privatekey.pem":{
+                                "source": { "Ref": "sshKeyS3Uri" },
+                                "mode": "000400",
+                                "owner": "centos",
+                                "group": "centos",
+                                "authentication": "S3AccessCreds"
+                            },
+                            "/opt/k8s-bigip-ctlr-master-26326.tar.gz":{
+                                "source": { "Ref": "containerConnectorS3Uri" },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos",
+                                "authentication": "S3AccessCreds"
+                            },
+                            "/opt/calicoctl":{
+                                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/calicoctl",
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/create_configmap.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "kubectl create -f /opt/vs-config.yaml",                                            
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },   
+                            "/opt/expose_service.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#Expose the port the NGINX servers will listen on.\n",
+                                            "kubectl expose deployment my-nginx --port=80 --type=NodePort\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },                                                  
+                            "/opt/create_cluster.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export PATH=/usr/local/bin:$PATH\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export AWS_ACCESS_KEY_ID=",
+                                            { "Ref": "accessKey" },
+                                            "\n",
+                                            "export AWS_SECRET_ACCESS_KEY=",
+                                            { "Ref": "secretKey" },
+                                            "\n",
+                                            "export CLUSTER_NAME=",
+                                            { "Ref": "K8ClusterName" },
+                                            ".route53.eisconsult.net\n",
+                                            "export KOPS_STATE_STORE=s3://",
+                                            { "Ref": "s3Bucket" },
+                                            "\n",
+                                            "export VPC_ID=",
+                                            { "Ref": "StackVPC"},
+                                            "\n",
+                                            "export NETWORK_CIDR=",
+                                            { "Fn::GetAtt": ["StackVPC","CidrBlock"] },
+                                            "\n",
+                                            "#kops update cluster --name=${CLUSTER_NAME}\n",
+                                            "kops create cluster --zones=",
+                                            {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
+                                            " --name=${CLUSTER_NAME} --vpc=${VPC_ID} --network-cidr=${NETWORK_CIDR} --ssh-public-key=/opt/id_rsa.pub\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/delete_cluster.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export PATH=/usr/local/bin:$PATH\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export AWS_ACCESS_KEY_ID=",
+                                            { "Ref": "accessKey" },
+                                            "\n",
+                                            "export AWS_SECRET_ACCESS_KEY=",
+                                            { "Ref": "secretKey" },
+                                            "\n",
+                                            "export CLUSTER_NAME=",
+                                            { "Ref": "K8ClusterName" },
+                                            ".route53.eisconsult.net\n",
+                                            "export KOPS_STATE_STORE=s3://",
+                                            { "Ref": "s3Bucket" },
+                                            "\n",
+                                            "export VPC_ID=",
+                                            { "Ref": "StackVPC"},
+                                            "\n",
+                                            "export NETWORK_CIDR=",
+                                            { "Fn::GetAtt": ["StackVPC","CidrBlock"] },
+                                            "\n",
+                                            "kops delete cluster --name=${CLUSTER_NAME} --yes\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },                        
+                            "/opt/update_cluster.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export PATH=/usr/local/bin:$PATH\n",
+                                            "export PATH=~/.local/bin:$PATH\n",
+                                            "export AWS_ACCESS_KEY_ID=",
+                                            { "Ref": "accessKey" },
+                                            "\n",
+                                            "export AWS_SECRET_ACCESS_KEY=",
+                                            { "Ref": "secretKey" },
+                                            "\n",
+                                            "export CLUSTER_NAME=",
+                                            { "Ref": "K8ClusterName" },
+                                            ".route53.eisconsult.net\n",
+                                            "export KOPS_STATE_STORE=s3://",
+                                            { "Ref": "s3Bucket" },
+                                            "\n",
+                                            "export VPC_ID=",
+                                            { "Ref": "StackVPC"},
+                                            "\n",
+                                            "export NETWORK_CIDR=",
+                                            { "Fn::GetAtt": ["StackVPC","CidrBlock"] },
+                                            "\n",
+                                            "kops update cluster --name=${CLUSTER_NAME} --yes\n"                                            
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },                            
+                            "/opt/cc_stage.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -x\n",
+                                            "function pushFiles() {\n",
+                                            "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/k8s-bigip-ctlr-master-26326.tar.gz admin@${1}:~/k8s-bigip-ctlr-master-26326.tar.gz\n",
+                                            "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/calicoctl admin@${1}:~/calicoctl\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker load -i ~/k8s-bigip-ctlr-master-26326.tar.gz\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker run -d -p 5000:5000 --restart=always --name registry registry:2\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker images\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker tag 93d8e97443f8 localhost:5000/cc\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo docker push localhost:5000/cc\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"chmod +x ~/calicoctl\"\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"sudo mv ~/calicoctl /usr/bin\"\n",
+                                            "}\n",
+                                            "# Get Master IP address\n",
+                                            "masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )\n",
+                                            "# Find Node IP addresses\n",
+                                            "kubectl get nodes | grep internal | cut -d\" \" -f1 | while read line\n",
+                                            "do\n",
+                                            "ipAddress=$(nslookup $line | awk '/^Address: / { print $2 }')\n",
+                                            "if [[ ${ipAddress} == ${masterIP} ]]; then\n",
+                                            "        echo \"Do nothing.\"\n",
+                                            "else\n",
+                                            "        echo ${ipAddress} >> /tmp/nodes\n",
+                                            "fi\n",
+                                            "done\n",
+                                            "#\n",
+                                            "exec 3</tmp/nodes\n",
+                                            "while IFS='' read -r -u 3 line || [[ -n \"$line\" ]]\n",
+                                            "do\n",
+                                            "pushFiles ${line}\n",
+                                            "done\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/fix_bgp_peers.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#\n",
+                                            "function pushFiles() {\n",
+                                            "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/bgp_peers.sh admin@${1}:~/bgp_peers.sh\n",
+                                            "    scp -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /opt/bgp_peers.yaml admin@${1}:~/bgp_peers.yaml\n",
+                                            "    ssh -i /home/centos/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${1} \"chmod +x ~/bgp_peers.sh\"\n",
+                                            "}\n",
+                                            "#Find the IP address of the Master of the Kubernetes cluster and \n",
+                                            "#replace put it into the bgp_peers.sh file.\n",
+                                            "masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )\n",
+                                            "sudo sed -i \"s|REPLACEME|$masterIP|\" /opt/bgp_peers.sh\n",
+                                            "#\n",
+                                            "#Push the files to each of the nodes.\n",
+                                            "exec 3</tmp/nodes\n",
+                                            "while IFS='' read -r -u 3 line || [[ -n \"$line\" ]] \n",
+                                            "do\n",
+                                            "pushFiles ${line}\n",
+                                            "done\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/bgp_peers.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#\n",
+                                            "sudo ETCD_ENDPOINTS=http://REPLACEME:4001 calicoctl create -f ~/bgp_peers.yaml\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/f5_container_connector_k8s_config.yaml": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "apiVersion: extensions/v1beta1\n",
+                                            "kind: Deployment\n",
+                                            "metadata:\n",
+                                            "    name: k8s-bigip-ctlr-deployment\n",
+                                            "    namespace: kube-system\n",
+                                            "spec:\n",
+                                            "    replicas: 2\n",
+                                            "    template:\n",
+                                            "        metadata:\n",
+                                            "            name: k8s-bigip-ctlr\n",
+                                            "            labels:\n",
+                                            "                app: k8s-bigip-ctlr\n",
+                                            "        spec:\n",
+                                            "            containers:\n",
+                                            "                - \n",
+                                            "                    name: k8s-bigip-ctlr\n",
+                                            "                    image: 'localhost:5000/cc'\n",
+                                            "                    env:\n",
+                                            "                        - \n",
+                                            "                            name: BIGIP_USERNAME\n",
+                                            "                            valueFrom:\n",
+                                            "                                secretKeyRef:\n",
+                                            "                                    name: bigip-login\n",
+                                            "                                    key: username\n",
+                                            "                        - \n",
+                                            "                            name: BIGIP_PASSWORD\n",
+                                            "                            valueFrom:\n",
+                                            "                                secretKeyRef:\n",
+                                            "                                    name: bigip-login\n",
+                                            "                                    key: password\n",
+                                            "                    command:\n",
+                                            "                        - /app/bin/k8s-bigip-ctlr\n",
+                                            "                    args:\n",
+                                            "                        - '--bigip-username=$(BIGIP_USERNAME)'\n",
+                                            "                        - '--bigip-password=$(BIGIP_PASSWORD)'\n",
+                                            "                        - '--bigip-url=10.10.20.249'\n",
+                                            "                        - '--bigip-partition=kubernetes'\n",
+                                            "                        - '--namespace=default'\n",
+                                            "            imagePullSecrets:\n",
+                                            "                - \n",
+                                            "                    name: f5-docker-images\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/deploy_f5_container_connector.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "kubectl create -f /opt/f5_container_connector_k8s_config.json -n kube-system\n",
+                                            "kubectl get pods -n kube-system\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/calico.yaml":{
+                                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/calico.yaml",
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/deploy_calico.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#\n",
+                                            "masterIP=$( kubectl get ep | awk '/^kubernetes / { print $2 }' | cut -d: -f1 )\n",
+                                            "sudo sed -i \"s|REPLACEME|$masterIP|\" /opt/calico.yaml\n",
+                                            "kubectl create -f /opt/calico.yaml -n kube-system\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/nginx.json": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",\"metadata\":{\"name\":\"my-nginx\"},\"spec\":",
+                                            "{\"replicas\":2,\"template\":{\"metadata\":{\"labels\":{\"run\":\"my-nginx\"}},\"spec\":{\"containers\":[{\"name\"",
+                                            ":\"my-nginx\",\"image\":\"nginx\",\"ports\":[{\"containerPort\":80}]}]}}}}"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/deploy_nginx_workload.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#\n",
+                                            "#Deploy the NGINX workload containers.\n",
+                                            "kubectl create -f /opt/nginx.json\n",
+                                            "#\n"                                        
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "centos",
+                                "group": "centos"
+                            },
+                            "/opt/appConfiguartion.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "#\n",
+                                            "#Update yum and system.\n",
+                                            "function updateYum() {\n",
+                                            "    echo \"**********Update yum and system.**********\"\n",
+                                            "    yum clean all\n",
+                                            "    yum -y update\n",
+                                            "    yum -y install bind-utils\n",
+                                            "}\n",
+                                            "updateYum\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Updated yum and system.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Failed to update yum and system.**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "#Install jq\n",
+                                            "function installJq() {\n",
+                                            "    echo \"**********Install jq.**********\"\n",
+                                            "    curl -Lk https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -o /opt/jq-linux64\n",
+                                            "    chmod +x /opt/jq-linux64\n",
+                                            "    ln -s /opt/jq-linux64 /usr/local/bin/jq\n",
+                                            "}\n",
+                                            "installJq\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Installed jq.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Failed to install jq.**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "#Install kubectl\n",
+                                            "function installKubectl() {\n",
+                                            "    echo \"**********Install kubectl.**********\"\n",
+                                            "    curl -Lk https://github.com/kubernetes/kubernetes/releases/download/v1.4.9/kubernetes.tar.gz -o /opt/kubernetes.tar.gz\n",
+                                            "    tar -zxvf /opt/kubernetes.tar.gz\n",
+                                            "    mv /opt/aws/kubernetes/platforms/linux/amd64/kubectl /usr/local/bin/kubectl\n",
+                                            "    chmod +x /usr/local/bin/kubectl\n",
+                                            "}\n",
+                                            "installKubectl\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Installed kubectl.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Failed to install kubectl.**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "#Install kops\n",
+                                            "function installKops() {\n",
+                                            "    echo \"**********Install KOPS.**********\"\n",
+                                            "    curl -Lk https://github.com/kubernetes/kops/releases/download/1.5.1/kops-linux-amd64 -o /opt/kops-linux-amd64\n",
+                                            "    chmod +x /opt/kops-linux-amd64\n",
+                                            "    mv /opt/kops-linux-amd64 /usr/local/bin/kops\n",
+                                            "}\n",
+                                            "installKops\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Installed KOPS.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Failed to install KOPS.**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "function installPip() {\n",
+                                            "    echo \"**********Install PIP.**********\"\n",
+                                            "    curl -Lk https://bootstrap.pypa.io/get-pip.py -o /opt/get-pip.py\n",
+                                            "    python /opt/get-pip.py --user\n",
+                                            "    export PATH=~/.local/bin:$PATH\n",
+                                            "    echo export PATH=~/.local/bin:$PATH >> ~/.bashrc\n",
+                                            "}\n",
+                                            "installPip\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Installed PIP.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Failed to install PIP.**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "function installAwsCli() {\n",
+                                            "    echo \"**********Install AWS CLI.**********\"\n",
+                                            "    pip install awscli --upgrade --user\n",
+                                            "}\n",
+                                            "installAwsCli\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Installed AWS CLI.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Failed to install AWS CLI.**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "#Write new id_rsa_pub file\n",
+                                            "function writeRSA() {\n",
+                                            "    echo \"**********Write new id_rsa_pub file.**********\"\n",
+                                            "    echo $(sed  -n -e 's/^.*\\(ssh-rsa \\)/\\1/p' ~/.ssh/authorized_keys) > ~/.ssh/id_rsa.pub\n",
+                                            "    cp ~/.ssh/id_rsa.pub /home/centos/.ssh/id_rsa.pub\n",
+                                            "    cp ~/.ssh/id_rsa.pub /opt/id_rsa.pub\n",
+                                            "    chmod 400 ~/.ssh/id_rsa.pub\n",
+                                            "    chmod 400 /home/centos/.ssh/id_rsa.pub\n",
+                                            "    chmod 400 /opt/id_rsa.pub\n",
+                                            "}\n",
+                                            "writeRSA\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Wrote id_rsa_pub.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Failed to write id_rsa_pub.**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "#Create K8s Cluster\n",     
+                                            "function createCluster() {\n",
+                                            "    echo \"**********Create the K8's Cluster.**********\"\n",                                                                                  
+                                            "    nohup /opt/create_cluster.sh &\n",
+                                            "    wait\n",
+                                            "}\n",
+                                            "createCluster\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Create cluster succeeded.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Create Cluster Failed!**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "#Update K8s Cluster\n",
+                                            "function updateCluster() {\n",
+                                            "    echo \"**********Run Update to actually deploy the K8's Cluster.**********\"\n",
+                                            "    nohup /opt/update_cluster.sh &\n",
+                                            "    wait\n",
+                                            "}\n",
+                                            "updateCluster\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Create cluster succeeded.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Create Cluster Failed!**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "function moveKubeConfig() {\n",
+                                            "    echo \"**********Move kube config file to the proper directories.**********\"\n",
+                                            "    mkdir /home/centos/.kube\n",
+                                            "    chown centos:centos /home/centos/.kube\n",
+                                            "    cp /opt/aws/.kube/config /home/centos/.kube/config\n",
+                                            "    chown centos:centos /home/centos/.kube/config\n",
+                                             "}\n",
+                                             "moveKubeConfig\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Kube config moved.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Move kube config Failed!**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "echo \"**********Wait 7 minutes while the K8's cluster builds.**********\"\n",
+                                            "sleep 7m\n",                                        
+                                            "function ccStage() {\n",
+                                            "    echo \"**********Stage the Container Connector in a local respository container on each of the K8's nodes.**********\"\n",
+                                            "    nohup /opt/cc_stage.sh &\n",
+                                            "    wait\n",
+                                            "}\n",
+                                            "ccStage\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Container Connector Succeeded.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Container Connector Staging Failed!**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",
+                                            "function deployCalico() {\n",
+                                            "    echo \"**********Deploy Calico for BGP Route Summarization.**********\"\n",
+                                            "    nohup /opt/deploy_calico.sh &\n",
+                                            "    wait\n", 
+                                            "}\n",
+                                            "deployCalico\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Deploy Calico Succeeded.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Deploy Calico Failed!**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",                                               
+                                            "date\n",
+                                            "#**********Delete the K8's secret file that contains sensitive data.**********\n",
+                                            "echo \"Finished Installing tools and K8's Cluster\"",
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        },
+                        "commands": {
+                            "001-app-config": {
+                                "command": "/opt/appConfiguartion.sh &>> /var/log/appconfig.log"
+                            },
+                            "002-signal-done": {
+                                "command": "/opt/signalDone.sh &>> /var/log/signal.log"
+                            }
+                        }
+                    }
+                },
+                "AWS::CloudFormation::Authentication": {
+                    "S3AccessCreds": {
+                        "type": "S3",
+                        "accessKeyId": { "Ref": "accessKey" },
+                        "secretKey": { "Ref": "secretKey" },
+                        "buckets": [ "f5awstraining2017" ]
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "KopsInstanceType"
+                },
+                "ImageId": {
+                    "Ref": "KopsInstanceAMI"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "externalSubnet"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "KopsInstanceSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -xe\n",
+                                "#\n",
+                                "cd /opt\n",
+                                "curl -O https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+                                "tar -xvpf aws-cfn-bootstrap-latest.tar.gz\n",
+                                "cd aws-cfn-bootstrap-1.4/\n",
+                                "python setup.py build\n",
+                                "python setup.py install\n",
+                                "ln -s /usr/init/redhat/cfn-hup /etc/init.d/cfn-hup\n",
+                                "chmod 775 /usr/init/redhat/cfn-hup\n",
+                                "cd /opt\n",
+                                "mkdir aws\n",
+                                "cd aws\n",
+                                "mkdir bin\n",
+                                "ln -s /usr/bin/cfn-hup /opt/aws/bin/cfn-hup\n",
+                                "ln -s /usr/bin/cfn-init /opt/aws/bin/cfn-init\n",
+                                "ln -s /usr/bin/cfn-signal /opt/aws/bin/cfn-signal\n",
+                                "ln -s /usr/bin/cfn-elect-cmd-leader /opt/aws/bin/cfn-elect-cmd-leader\n",
+                                "ln -s /usr/bin/cfn-get-metadata /opt/aws/bin/cfn-get-metadata\n",
+                                "ln -s /usr/bin/cfn-send-cmd-event /opt/aws/bin/cfn-send-cmd-event\n",
+                                "ln -s /usr/bin/cfn-send-cmd-result /opt/aws/bin/cfn-send-cmd-result\n",
+                                "\n",
+                                "/opt/aws/bin/cfn-init -v ",
+                                " --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                " --resource KopsInstance",
+                                " --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "if [[ $? -ne 0 ]]; then\n",
+                                "/opt/aws/bin/cfn-signal -e $? '",
+                                {
+                                    "Ref": "KopsInstanceWaitHandle"
+                                },
+                                "'\n",                                            
+                                "fi\n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "KopsInstanceWaitCondition": {
+            "Type": "AWS::CloudFormation::WaitCondition",
+            "DependsOn": "KopsInstance",
+            "Properties": {
+                "Handle": {
+                    "Ref": "KopsInstanceWaitHandle"
+                },
+                "Count": "1",
+                "Timeout": "2100"
+            }
+        },
+        "KopsInstanceWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle",
+            "Properties": {}
+        }
+    },
+    "Outputs": {
+        "ToolVM": {
+            "Description": "The IP address to connect to the Tool-VM jump box.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {
+                            "Fn::GetAtt": [
+                                "KopsInstance",
+                                "PublicIp"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        }
+    }
+}
