@@ -33,7 +33,8 @@
                     "Parameters": [
                         "KopsInstanceAMI",
                         "sshKeyS3Uri",
-                        "containerConnectorS3Uri"
+                        "containerConnectorS3Uri",
+                        "route53DNSDomain"
                     ]
                 }
             ],
@@ -96,6 +97,10 @@
         "containerConnectorS3Uri": {
             "Type": "String",
             "Description": "Paste in the S3 location of the F5 Conatiner Connector tar ball."
+        },
+        "route53DNSDomain": {
+            "Type": "String",
+            "Description": "Paste in the name of the Route53 DNS domain you are going to use for the K8's cluster."
         }
     },
     "Resources": {
@@ -393,7 +398,9 @@
                                             "\n",
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
-                                            ".route53.eisconsult.net\n",
+                                            ".",
+                                            { "Ref": "route53DNSDomain" },
+                                            "\n",
                                             "export KOPS_STATE_STORE=s3://",
                                             { "Ref": "s3Bucket" },
                                             "\n",
@@ -431,7 +438,9 @@
                                             "\n",
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
-                                            ".route53.eisconsult.net\n",
+                                            ".",
+                                            { "Ref": "route53DNSDomain" },
+                                            "\n",
                                             "export KOPS_STATE_STORE=s3://",
                                             { "Ref": "s3Bucket" },
                                             "\n",
@@ -466,7 +475,9 @@
                                             "\n",
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
-                                            ".route53.eisconsult.net\n",
+                                            ".",
+                                            { "Ref": "route53DNSDomain" },
+                                            "\n",
                                             "export KOPS_STATE_STORE=s3://",
                                             { "Ref": "s3Bucket" },
                                             "\n",

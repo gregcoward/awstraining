@@ -10,6 +10,7 @@
                     },
                     "Parameters": [
                         "KeyName",
+                        "sshKeyS3Uri",
                         "adminUsername",
                         "adminPassword",
                         "BIGIPName"
@@ -30,6 +31,20 @@
                     "Parameters": [
                         "BIGIPAMI"
                     ]
+                },
+                {
+                    "Label": {
+                        "default": "K8's Environment Information"
+                    },
+                    "Parameters": [
+                        "StackVPC",
+                        "StackInternetGateway",
+                        "externalSubnet",
+                        "internalSubnet",
+                        "KopsInstanceSecurityGroup",
+                        "KopsPrivateIpAddress"
+
+                    ]
                 }
             ],
             "ParameterLabels": {}
@@ -40,10 +55,6 @@
             "Description": "Name of an existing EC2 KeyPair",
             "Type": "AWS::EC2::KeyPair::KeyName",
             "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
-        },
-        "K8ClusterName": {
-            "Description": "The name of the BIG-IP.",
-            "Type": "String"
         },
         "adminUsername": {
             "Type": "String",
@@ -84,6 +95,30 @@
         "StackVPC": {
             "Description": "Select the name of the VPC that you have been assigned.",
             "Type": "AWS::EC2::VPC::Id"
+        },
+        "StackInternetGateway": {
+            "Description": "Please paste the ID (igw-xxxxxxx) of the Internet Gateway for the VPC you chose.",
+            "Type": "String"
+        },
+        "externalSubnet": {
+            "Description": "This is the subnet that the Tool-VM is connected to. Please select from the list.",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "internalSubnet": {
+            "Description": "This is the subnet that the Kubernetes Cluster is connected to.  Please select from the list.",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "KopsInstanceSecurityGroup": {
+            "Description": "The is the Security Group for the Tool-VM, please select from the list.",
+            "Type": "AWS::EC2::SecurityGroup::Id"
+        },
+        "KopsPrivateIpAddress": {
+            "Description": "The private IP address of the Tool-VM.",
+            "Type": "String"
+        },
+        "sshKeyS3Uri": {
+            "Type": "String",
+            "Description": "Paste in the S3 location of the SSH Private Key."            
         }
     },
     "Resources": {
@@ -233,8 +268,7 @@
             },
             "Type": "AWS::EC2::NetworkInterface"
         },
-        "BigipInternalInterface": {
-            "DependsOn" : [ "KopsInstanceSecurityGroup" ],
+        "BigipInternalInterface": {            
             "Properties": {
                 "Description": "Internal Interface for the BIG-IP",
                 "GroupSet": [
@@ -469,6 +503,96 @@
                                 "owner": "root",
                                 "group": "root"
                             },
+                            "/config/vs-config.yaml":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "kind: ConfigMap\n",
+                                            "apiVersion: v1\n",
+                                            "metadata:\n",
+                                            "  name: example-vs\n",
+                                            "  namespace: default\n",
+                                            "  labels:\n",
+                                            "    f5type: virtual-server\n",
+                                            "data:\n",
+                                            "  schema: \"f5schemadb://bigip-virtual-server_v0.1.2.json\"\n",
+                                            "  data: |\n",
+                                            "    {\n",
+                                            "      \"virtualServer\": {\n",
+                                            "        \"backend\": {\n",
+                                            "          \"servicePort\": 80,\n",
+                                            "          \"serviceName\": \"my-nginx\",\n",
+                                            "          \"healthMonitors\": [{\n",
+                                            "            \"interval\": 30,\n",
+                                            "            \"protocol\": \"http\",\n",
+                                            "            \"send\": \"GET /\\\\r\\\\n\",\n",
+                                            "            \"timeout\": 86400\n",
+                                            "          }]\n",
+                                            "        },\n",
+                                            "        \"frontend\": {\n",
+                                            "          \"virtualAddress\": {\n",
+                                            "            \"port\": 80,\n",
+                                            "            \"bindAddr\": \"",{"Fn::Select": ["0",{"Fn::GetAtt": ["BigipExternalInterface","SecondaryPrivateIpAddresses"]}]},"\"\n",
+                                            "          },\n",
+                                            "          \"partition\": \"kubernetes\",\n",
+                                            "          \"balance\": \"round-robin\",\n",
+                                            "          \"mode\": \"http\"\n",
+                                            "        }\n",
+                                            "      }\n",
+                                            "    }\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/create_secret.sh": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "#!/bin/bash -xe\n",
+                                            "kubectl create secret generic bigip-credentials --namespace kube-system --from-literal=username=",
+                                            { "Ref": "adminUsername" },
+                                            " --from-literal=password=",
+                                            { "Ref": "adminPassword" },
+                                            " --from-literal=url=",
+                                            { "Fn::GetAtt": ["BigipMGMTInterface","PrimaryPrivateIpAddress"] },
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/bgp_peers.yaml":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "apiVersion: v1\n",
+                                            "kind: bgpPeer\n",
+                                            "metadata:\n",
+                                            "  peerIP: ",{ "Fn::GetAtt": ["BigipInternalInterface","PrimaryPrivateIpAddress"] },"\n",
+                                            "  scope: global\n",
+                                            "spec:\n",
+                                            "  asNumber: 64511\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/config/privatekey.pem":{
+                                "source": { "Ref": "sshKeyS3Uri" },
+                                "mode": "000400",
+                                "owner": "root",
+                                "group": "root"                                
+                            },
                             "/config/cloud/aws/appConfiguartion.sh": {
                                 "content": {
                                     "Fn::Join": [
@@ -480,35 +604,18 @@
                                             "while getopts i:d:x:p: option\n",
                                             "do case \"$option\" in\n",
                                             "     i) ipAddress=$OPTARG;;\n",
-                                            "     d) domainFqdn=$OPTARG;;\n",
-                                            "     x) passwd=$OPTARG;;\n",
-                                            "     p) pipAddress=$OPTARG;;\n",
                                             "   esac\n",
-                                            "done\n",
-                                            "user=\"admin\"\n",
+                                            "done\n",                                            
                                             "#\n",
+                                            "function pushFiles() {\n",
+                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/bgp_peers.sh centos@${1}:/opt/bgp_peers.sh\n",
+                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/create_secret.sh centos@${1}:/opt/create_secret.sh\n",
+                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/vs_config.yaml centos@${1}:/opt/vs_config.yaml\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"/opt/create_secret.sh\"\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"/opt/fix_bgp_peers.sh\"\n",
+                                            "}\n",
                                             "#\n",
-                                            "#\n",
-                                            "pool_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/pool -d '{\"name\":\"kops_ssh_pool\",\"description\":\"kops_ssh_pool\",\"monitor\":\"/Common/tcp\",\"members\":[{\"name\":\"'\"$ipAddress\"':22\",\"address\":\"'\"$ipAddress\"'\"}]}' -o /dev/null)\n",
-                                            "#\n",
-                                            "#\n",
-                                            "if [[ ${pool_response_code} != 200 ]]; then\n",
-                                            "    echo \"Failed to create the kops_ssh_pool; exiting with response code ${pool_response_code}\"\n",
-                                            "    exit ${pool_response_code}\n",
-                                            "else\n",
-                                            "    echo \"KOPS SSH Pool creation complete.\"\n",
-                                            "fi\n",
-                                            "#\n",
-                                            "#\n",
-                                            "vip_response_code=$(curl -sku ${user}:${passwd} -w \"%{http_code}\" -X POST -H \"Content-Type: application/json\" https://localhost/mgmt/tm/ltm/virtual -d '{\"name\":\"kops_ssh_vip\",\"destination\":\"/Common/'\"$pipAddress\"':22\",\"enabled\":true,\"ipProtocol\":\"tcp\",\"mask\":\"255.255.255.255\",\"pool\":\"/Common/kops_ssh_pool\",\"source\":\"0.0.0.0/0\",\"sourceAddressTranslation\":{\"type\":\"automap\"},\"translateAddress\":\"enabled\",\"translatePort\":\"enabled\",\"vlansDisabled\":true,\"vsIndex\":3,\"profiles\":[{\"name\":\"tcp\"}]}' -o /dev/null)\n",
-                                            "#\n",
-                                            "#\n",
-                                            "if [[ ${vip_response_code} != 200 ]]; then\n",
-                                            "    echo \"Failed to create KOPS SSH VIP; exiting with response code ${vip_response_code}\"\n",
-                                            "    exit ${vip_response_code}\n",
-                                            "else\n",
-                                            "    echo \"KOPS SSH VIP creation complete.\"\n",
-                                            "fi\n",
+                                            "pushFiles ${ipAddress}\n",
                                             "#\n",
                                             "tmsh create sys folder /kubernetes\n",
                                             "#\n",
@@ -614,7 +721,7 @@
                                             {
                                                 "Ref": "adminPassword"
                                             },
-                                            "--default-gw 10.10.10.1",
+                                            "--default-gw 10.10.1.1",
                                             "--vlan 'External, 1.1'",
                                             "--vlan 'Internal, 1.2'",
                                             "--self-ip 'external_self_ip, ",
@@ -650,12 +757,7 @@
                                             " --log-level debug",
                                             " --cl-args '",
                                             "-i ",
-                                            { "Fn::GetAtt": [ "KopsInstance","PrivateIp" ] },
-                                            " -d myWebapp.example.com",
-                                            " -x ",
-                                            { "Ref": "adminPassword" },
-                                            " -p ",
-                                            { "Fn::GetAtt": ["BigipExternalInterface","PrimaryPrivateIpAddress"] },
+                                            { "Ref": "KopsPrivateIpAddress" },                                            
                                             "'",
                                             " -o /var/log/appConfiguartion.log",
                                             " --wait-for NETWORK_CONFIG_DONE",
