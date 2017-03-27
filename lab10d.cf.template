@@ -233,6 +233,52 @@
                 ]
             }
         },
+        "BIGIPMgmtEip": {
+            "Type": "AWS::EC2::EIP"
+        },
+        "BIGIPMgmtEipAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "BIGIPMgmtEip",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "BigipMGMTInterface"
+                },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "BigipMGMTInterface",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            }
+        },
+        "BIGIPExternalEip": {
+            "Type": "AWS::EC2::EIP"
+        },
+        "BIGIPExternalEipAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "BIGIPExternalEip",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "BigipExternalInterface"
+                },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "BigipExternalInterface",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            }
+        },
         "BIGIPExternalVIPEip": {
             "Type": "AWS::EC2::EIP"
         },
