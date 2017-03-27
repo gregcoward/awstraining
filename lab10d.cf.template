@@ -36,13 +36,9 @@
                     "Label": {
                         "default": "K8's Environment Information"
                     },
-                    "Parameters": [
-                        "StackVPC",
-                        "StackInternetGateway",
-                        "externalSubnet",
+                    "Parameters": [                        
                         "internalSubnet",
-                        "KopsInstanceSecurityGroup",
-                        "KopsPrivateIpAddress"
+                        "assignedStackName"
 
                     ]
                 }
@@ -92,29 +88,13 @@
                 "ami-25002540"
             ]
         },
-        "StackVPC": {
-            "Description": "Select the name of the VPC that you have been assigned.",
-            "Type": "AWS::EC2::VPC::Id"
-        },
-        "StackInternetGateway": {
-            "Description": "Please paste the ID (igw-xxxxxxx) of the Internet Gateway for the VPC you chose.",
+        "assignedStackName": {
+            "Description": "The name of the Lab 10 Stack you were assigned.",
             "Type": "String"
-        },
-        "externalSubnet": {
-            "Description": "This is the subnet that the Tool-VM is connected to. Please select from the list.",
-            "Type": "AWS::EC2::Subnet::Id"
         },
         "internalSubnet": {
             "Description": "This is the subnet that the Kubernetes Cluster is connected to.  Please select from the list.",
             "Type": "AWS::EC2::Subnet::Id"
-        },
-        "KopsInstanceSecurityGroup": {
-            "Description": "The is the Security Group for the Tool-VM, please select from the list.",
-            "Type": "AWS::EC2::SecurityGroup::Id"
-        },
-        "KopsPrivateIpAddress": {
-            "Description": "The private IP address of the Tool-VM.",
-            "Type": "String"
         },
         "sshKeyS3Uri": {
             "Type": "String",
@@ -126,7 +106,7 @@
             "Type": "AWS::EC2::Subnet",
             "Properties": {
                 "VpcId": {
-                    "Ref": "StackVPC"
+                    "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-StackVPC" }
                 },
                 "AvailabilityZone": {"Fn::Join": ["",[{"Ref": "AWS::Region"},"a"]]},
                 "CidrBlock": "10.10.5.0/24",
@@ -143,7 +123,7 @@
             "Type": "AWS::EC2::RouteTable",
             "Properties": {
                 "VpcId": {
-                    "Ref": "StackVPC"
+                    "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-StackVPC" }
                 },
                 "Tags": [
                     {
@@ -171,7 +151,7 @@
                 },
                 "DestinationCidrBlock": "0.0.0.0/0",
                 "GatewayId": {
-                    "Ref": "StackInternetGateway"
+                    "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-StackInternetGateway" }
                 }
             }
         },
@@ -191,7 +171,7 @@
             "Properties": {
                 "GroupDescription": "Enable HTTP and RDP",
                 "VpcId": {
-                    "Ref": "StackVPC"
+                    "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-StackVPC" }
                 },
                 "SecurityGroupIngress": [
                     {
@@ -309,7 +289,7 @@
                 ],
                 "SecondaryPrivateIpAddressCount": "1",
                 "SubnetId": {
-                    "Ref": "externalSubnet"
+                    "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-externalSubnet" }
                 }
             },
             "Type": "AWS::EC2::NetworkInterface"
@@ -319,7 +299,7 @@
                 "Description": "Internal Interface for the BIG-IP",
                 "GroupSet": [
                     {
-                        "Ref": "KopsInstanceSecurityGroup"
+                        "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-KopsInstanceSecurityGroup" }
                     }
                 ],
                 "SubnetId": {
@@ -803,7 +783,7 @@
                                             " --log-level debug",
                                             " --cl-args '",
                                             "-i ",
-                                            { "Ref": "KopsPrivateIpAddress" },                                            
+                                            { "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-ToolVMPrivateIP" }},                                            
                                             "'",
                                             " -o /var/log/appConfiguartion.log",
                                             " --wait-for NETWORK_CONFIG_DONE",

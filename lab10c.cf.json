@@ -1008,7 +1008,7 @@
         }
     },
     "Outputs": {
-        "ToolVM": {
+        "ToolVMPublicIP": {
             "Description": "The IP address to connect to the Tool-VM jump box.",
             "Value": {
                 "Fn::Join": [
@@ -1022,6 +1022,51 @@
                         }
                     ]
                 ]
+            }
+        },
+        "StackVPC": {
+            "Description": "The VPC.",
+            "Value": {
+                "Ref": "StackVPC"
+            },
+            "Export": {
+                "Name": {"Fn::Sub": "${AWS::StackName}-StackVPC"}
+            }
+        },
+        "StackInternetGateway": {
+            "Description": "The Internet Gateway.",
+            "Value": {
+                "Ref": "StackInternetGateway"
+            },
+            "Export": {
+                "Name": {"Fn::Sub": "${AWS::StackName}-StackInternetGateway"}
+            }
+        },
+        "externalSubnet": {
+            "Description": "The external Subnet.",
+            "Value": {
+                "Ref": "externalSubnet"
+            },
+            "Export": {
+                "Name": {"Fn::Sub": "${AWS::StackName}-externalSubnet"}
+            }
+        },
+        "KopsInstanceSecurityGroup": {
+            "Description": "The external Subnet.",
+            "Value": {
+                "Fn::GetAtt": ["KopsInstanceSecurityGroup","GroupId"]
+            },
+            "Export": {
+                "Name": {"Fn::Sub": "${AWS::StackName}-KopsInstanceSecurityGroup"}
+            }
+        },
+        "ToolVMPrivateIP": {
+            "Description": "The IP address to connect to the Tool-VM jump box.",
+            "Value": {
+                "Fn::GetAtt": [ "KopsInstance","PrivateIp" ]
+            },
+            "Export": {
+                "Name": {"Fn::Sub": "${AWS::StackName}-ToolVMPrivateIP"}
             }
         }
     }
