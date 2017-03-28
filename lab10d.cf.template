@@ -317,6 +317,59 @@
             },
             "Type": "AWS::EC2::NetworkInterface"
         },
+        "BIGIPS3Role": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/"                
+            }
+        },
+        "BIGIPS3Policy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "BIGIPS3Policy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:*"
+                            ],
+                            "Resource": [
+                                "arn:aws:s3:::f5awstraining2017/*"
+                            ]
+                        }                        
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "BIGIPS3Role"
+                    }
+                ]
+            }
+        },
+        "BIGIPInstanceProfile":{
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties":{
+                "Roles": [ {"Ref": "BIGIPS3Role"} ],
+                "Path": "/"
+            }
+        },
         "BIGIPInstance": {
             "Type": "AWS::EC2::Instance",
             "Metadata": {
@@ -609,7 +662,7 @@
                                 "group": "root"
                             },
                             "/config/privatekey.pem":{
-                                "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/tstanley933.pem",
+                                "source": "http://f5awstraining2017.s3.amazonaws.com/tstanley933.pem",
                                 "mode": "000400",
                                 "owner": "root",
                                 "group": "root",
@@ -821,7 +874,7 @@
                 "AWS::CloudFormation::Authentication": {
                     "S3AccessCreds": {
                         "type": "S3",
-                        "roleName": "cftRole",
+                        "roleName": {"Ref": "BIGIPS3Role"},
                         "buckets": [ "f5awstraining2017" ]
                     }
                 }
@@ -835,6 +888,9 @@
                 },
                 "KeyName": {
                     "Ref": "KeyName"
+                },
+                "IamInstanceProfile": {
+                    "Ref": "BIGIPInstanceProfile"
                 },
                 "NetworkInterfaces": [
                     {
