@@ -10,7 +10,6 @@
                     },
                     "Parameters": [
                         "KeyName",
-                        "sshKeyS3Uri",
                         "adminUsername",
                         "adminPassword",
                         "BIGIPName"
@@ -95,10 +94,6 @@
         "internalSubnet": {
             "Description": "This is the subnet that the Kubernetes Cluster is connected to.  Please select from the list.",
             "Type": "AWS::EC2::Subnet::Id"
-        },
-        "sshKeyS3Uri": {
-            "Type": "String",
-            "Description": "Paste in the S3 location of the SSH Private Key."            
         }
     },
     "Resources": {
@@ -614,10 +609,11 @@
                                 "group": "root"
                             },
                             "/config/privatekey.pem":{
-                                "source": { "Ref": "sshKeyS3Uri" },
+                                "source": "https://s3-us-west-2.amazonaws.com/f5awstraining2017/tstanley933.pem",
                                 "mode": "000400",
                                 "owner": "root",
-                                "group": "root"                                
+                                "group": "root",
+                                "authentication": "S3AccessCreds"                                
                             },
                             "/config/cloud/aws/appConfiguartion.sh": {
                                 "content": {
@@ -820,6 +816,13 @@
                                 }
                             }
                         }
+                    }
+                },
+                "AWS::CloudFormation::Authentication": {
+                    "S3AccessCreds": {
+                        "type": "S3",
+                        "roleName": "cftRole",
+                        "buckets": [ "f5awstraining2017" ]
                     }
                 }
             },

@@ -913,8 +913,7 @@
                 "AWS::CloudFormation::Authentication": {
                     "S3AccessCreds": {
                         "type": "S3",
-                        "accessKeyId": { "Ref": "accessKey" },
-                        "secretKey": { "Ref": "secretKey" },
+                        "roleName": { "Ref": "cftRole" },
                         "buckets": [ "f5awstraining2017" ]
                     }
                 }
