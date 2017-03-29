@@ -381,6 +381,16 @@
                 "owner": "root",
                 "group": "root"
               },
+              "/opt/aws_config.json": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "{\"accessKeyId\":\"AKIAIGO7NENBYVY3DW6Q\",\"secretAccessKey\":\"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\",\"region\":\"us-west-2\"}"
+                    ]
+                  ]
+                }
+              },
               "/opt/appConfiguartion.sh": {
                 "content": {
                   "Fn::Join": [
@@ -394,24 +404,27 @@
                       "# Install Node\n",
                       "yum -y install nodejs\n",
                       "#\n",
-                      "# Extract the proxy\n",
+                      "# Install Docker\n",
+                      "yum -y install docker\n",
+                      "#\n",
+                      "# Extract the proxy and load into docker\n",
                       "cd /opt\n",
-                      "tar -zxvf /opt/proxy-0-0-1.tgz\n",
+                      "tar -zxvf /opt/proxy-0-0-1.tgz | docker load\n",
                       "#\n",
                       "# Start the proxy\n",
-                      "nohup node /opt/proxy/lib/Proxy.js -n ",
+                      "sudo docker run -d -e httpPort=8080 --restart=always --net=host -e proxyName=",
                       {
                         "Ref": "appConnectorName"
                       },
-                      " -u ",
+                      " -e user=",
                       {
                         "Ref": "adminUsername"
                       },
-                      " -w ",
+                      " -e passwd=",
                       {
                         "Ref": "adminPassword"
                       },
-                      " &\n",
+                      " -it -v /home/centos/cloud_vendors/aws:/app/proxy/vendors/aws -v /app/proxy/log -v /app/proxy/config f5/ac:v0.1.7\n",
                       "exit\n"
                     ]
                   ]

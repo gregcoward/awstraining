@@ -577,7 +577,7 @@
                                 "owner": "root",
                                 "group": "root"
                             },
-                            "/config/vs-config.yaml":{
+                            "/config/vs_config.yaml":{
                                 "content": {
                                     "Fn::Join": [
                                         "",
@@ -683,7 +683,7 @@
                                             "done\n",                                            
                                             "#\n",
                                             "function pushFiles() {\n",
-                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/bgp_peers.sh centos@${1}:~/bgp_peers.yaml\n",
+                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/bgp_peers.yaml centos@${1}:~/bgp_peers.yaml\n",
                                             "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/create_secret.sh centos@${1}:~/create_secret.sh\n",
                                             "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/vs_config.yaml centos@${1}:~/vs_config.yaml\n",
                                             "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo mv ~/bgp_peers.yaml /opt/bgp_peers.yaml\"\n",
@@ -700,6 +700,7 @@
                                             "pushFiles ${ipAddress}\n",
                                             "#\n",
                                             "tmsh create sys folder /kubernetes\n",
+                                            "#\n",
                                             "exit\n"
                                         ]
                                     ]
@@ -819,7 +820,7 @@
                                                     "PrimaryPrivateIpAddress"
                                                 ]
                                             },
-                                            ", Internal'",
+                                            "/19, Internal'",
                                             "&>> /var/log/cloudlibs-install.log &"
                                         ]
                                     ]

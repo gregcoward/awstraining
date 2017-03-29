@@ -10,10 +10,6 @@
                     },
                     "Parameters": [
                         "KeyName",
-                        "adminUsername",
-                        "adminPassword",
-                        "accessKey",
-                        "secretKey",
                         "KopsInstanceName",
                         "K8ClusterName"
                     ]
@@ -32,8 +28,7 @@
                     },
                     "Parameters": [
                         "KopsInstanceAMI",
-                        "sshKeyS3Uri",
-                        "containerConnectorS3Uri",
+                        "S3BucketName",
                         "route53DNSDomain"
                     ]
                 }
@@ -56,15 +51,9 @@
             "Type": "String",
             "Default": "KopsInstance"
         },
-        "accessKey": {
-            "Type": "String",
-            "Description": "Access Key required to create the cluster.",
-            "NoEcho": "true"
-        },
-        "secretKey": {
-            "Type": "String",
-            "Description": "Secret Key also required to create the cluster.",
-            "NoEcho": "true"
+        "S3BucketName": {
+            "Description": "The name of the S3 bucket that contains the private key and container connector tar ball.",
+            "Type": "String"
         },
         "KopsInstanceType": {
             "Description": "EC2 instance type",
@@ -89,14 +78,6 @@
                 "ami-6d1c2007",
                 "ami-6a2d760f"
             ]
-        },
-        "sshKeyS3Uri": {
-            "Type": "String",
-            "Description": "Paste in the S3 location of the SSH Private Key."            
-        },
-        "containerConnectorS3Uri": {
-            "Type": "String",
-            "Description": "Paste in the S3 location of the F5 Conatiner Connector tar ball."
         },
         "route53DNSDomain": {
             "Type": "String",
@@ -253,6 +234,85 @@
                 ]
             }
         },
+        "KOPSRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/"                
+            }
+        },
+        "KOPSPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "KOPSPolicy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:*"
+                            ],
+                            "Resource": [
+                                {"Fn::Join":["",["arn:aws:s3:::",{ "Ref": "s3Bucket" },"/*"]]},
+                                {"Fn::Join":["",["arn:aws:s3:::",{ "Ref": "S3BucketName" },"/*"]]}
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "iam:*",
+                            "Resource": "*"
+                        },
+                        {
+                            "Action": "ec2:*",
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "elasticloadbalancing:*",
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "cloudwatch:*",
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "autoscaling:*",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "KOPSRole"
+                    }
+                ]
+            }
+        },
+        "KOPSInstanceProfile":{
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties":{
+                "Roles": [ {"Ref": "KOPSRole"} ],
+                "Path": "/"
+            }
+        },
         "KopsInstance": {
             "Type": "AWS::EC2::Instance",
             "Metadata": {
@@ -295,51 +355,15 @@
                                 "owner": "root",
                                 "group": "root"
                             },
-                            "/root/.aws/credentials":{
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[default]\n",
-                                            "aws_access_key_id = ",
-                                            { "Ref": "accessKey" },
-                                            "\n",
-                                            "aws_secret_access_key = ",
-                                            { "Ref": "secretKey" },
-                                            "\n"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
-                            },
-                            "/root/.aws/config":{
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[default]\n",
-                                            "output = json\n",
-                                            "region = ",
-                                            { "Ref": "AWS::Region" },
-                                            "\n"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
-                            },
                             "/home/centos/privatekey.pem":{
-                                "source": { "Ref": "sshKeyS3Uri" },
+                                "source": {"Fn::Join":["",["http://",{ "Ref": "S3BucketName" },".s3.amazonaws.com/tstanley933.pem"]]},
                                 "mode": "000400",
                                 "owner": "centos",
                                 "group": "centos",
                                 "authentication": "S3AccessCreds"
                             },
                             "/opt/k8s-bigip-ctlr-master-26326.tar.gz":{
-                                "source": { "Ref": "containerConnectorS3Uri" },
+                                "source": {"Fn::Join":["",["http://",{ "Ref": "S3BucketName" },".s3.amazonaws.com/k8s-bigip-ctlr-master-26326.tar.gz"]]},
                                 "mode": "000755",
                                 "owner": "centos",
                                 "group": "centos",
@@ -389,13 +413,7 @@
                                             "#!/bin/bash -xe\n",
                                             "export PATH=~/.local/bin:$PATH\n",
                                             "export PATH=/usr/local/bin:$PATH\n",
-                                            "export PATH=~/.local/bin:$PATH\n",
-                                            "export AWS_ACCESS_KEY_ID=",
-                                            { "Ref": "accessKey" },
-                                            "\n",
-                                            "export AWS_SECRET_ACCESS_KEY=",
-                                            { "Ref": "secretKey" },
-                                            "\n",
+                                            "export PATH=~/.local/bin:$PATH\n",                                            
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
                                             ".",
@@ -430,12 +448,6 @@
                                             "export PATH=~/.local/bin:$PATH\n",
                                             "export PATH=/usr/local/bin:$PATH\n",
                                             "export PATH=~/.local/bin:$PATH\n",
-                                            "export AWS_ACCESS_KEY_ID=",
-                                            { "Ref": "accessKey" },
-                                            "\n",
-                                            "export AWS_SECRET_ACCESS_KEY=",
-                                            { "Ref": "secretKey" },
-                                            "\n",
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
                                             ".",
@@ -467,12 +479,6 @@
                                             "export PATH=~/.local/bin:$PATH\n",
                                             "export PATH=/usr/local/bin:$PATH\n",
                                             "export PATH=~/.local/bin:$PATH\n",
-                                            "export AWS_ACCESS_KEY_ID=",
-                                            { "Ref": "accessKey" },
-                                            "\n",
-                                            "export AWS_SECRET_ACCESS_KEY=",
-                                            { "Ref": "secretKey" },
-                                            "\n",
                                             "export CLUSTER_NAME=",
                                             { "Ref": "K8ClusterName" },
                                             ".",
@@ -590,44 +596,48 @@
                                             "apiVersion: extensions/v1beta1\n",
                                             "kind: Deployment\n",
                                             "metadata:\n",
-                                            "    name: k8s-bigip-ctlr-deployment\n",
+                                            "    name: f5-k8s-controller\n",
                                             "    namespace: kube-system\n",
                                             "spec:\n",
-                                            "    replicas: 2\n",
+                                            "    replicas: 1\n",
                                             "    template:\n",
                                             "        metadata:\n",
-                                            "            name: k8s-bigip-ctlr\n",
+                                            "            name: f5-k8s-controller\n",
                                             "            labels:\n",
-                                            "                app: k8s-bigip-ctlr\n",
+                                            "                app: f5-k8s-controller\n",
                                             "        spec:\n",
                                             "            containers:\n",
                                             "                - \n",
-                                            "                    name: k8s-bigip-ctlr\n",
+                                            "                    name: f5-k8s-controller\n",
                                             "                    image: 'localhost:5000/cc'\n",
                                             "                    env:\n",
                                             "                        - \n",
                                             "                            name: BIGIP_USERNAME\n",
                                             "                            valueFrom:\n",
                                             "                                secretKeyRef:\n",
-                                            "                                    name: bigip-login\n",
+                                            "                                    name: bigip-credentials\n",
                                             "                                    key: username\n",
                                             "                        - \n",
                                             "                            name: BIGIP_PASSWORD\n",
                                             "                            valueFrom:\n",
                                             "                                secretKeyRef:\n",
-                                            "                                    name: bigip-login\n",
+                                            "                                    name: bigip-credentials\n",
                                             "                                    key: password\n",
+                                            "                            name: BIGIP_URL\n",
+                                            "                            valueFrom:\n",
+                                            "                                secretKeyRef:\n",
+                                            "                                    name: bigip-credentials\n",
+                                            "                                    key: url\n",
                                             "                    command:\n",
                                             "                        - /app/bin/k8s-bigip-ctlr\n",
                                             "                    args:\n",
                                             "                        - '--bigip-username=$(BIGIP_USERNAME)'\n",
                                             "                        - '--bigip-password=$(BIGIP_PASSWORD)'\n",
-                                            "                        - '--bigip-url=10.10.20.249'\n",
+                                            "                        - '--bigip-url=$(BIGIP_URL)'\n",
                                             "                        - '--bigip-partition=kubernetes'\n",
                                             "                        - '--namespace=default'\n",
-                                            "            imagePullSecrets:\n",
-                                            "                - \n",
-                                            "                    name: f5-docker-images\n"
+                                            "                        - '--bigip-partition=kubernetes'\n",
+                                            "                        - '--pool-member-type=cluster'\n"
                                         ]
                                     ]
                                 },
@@ -640,7 +650,7 @@
                                     "Fn::Join": [
                                         "",
                                         [
-                                            "kubectl create -f /opt/f5_container_connector_k8s_config.json -n kube-system\n",
+                                            "kubectl create -f /opt/f5_container_connector_k8s_config.yaml -n kube-system\n",
                                             "kubectl get pods -n kube-system\n"
                                         ]
                                     ]
@@ -913,8 +923,8 @@
                 "AWS::CloudFormation::Authentication": {
                     "S3AccessCreds": {
                         "type": "S3",
-                        "roleName": { "Ref": "cftRole" },
-                        "buckets": [ "f5awstraining2017" ]
+                        "roleName": { "Ref": "KOPSRole" },
+                        "buckets": [ { "Ref": "s3Bucket" },{ "Ref": "S3BucketName" } ]
                     }
                 }
             },
@@ -927,6 +937,9 @@
                 },
                 "KeyName": {
                     "Ref": "KeyName"
+                },
+                "IamInstanceProfile": {
+                    "Ref": "KOPSInstanceProfile"
                 },
                 "SubnetId": {
                     "Ref": "externalSubnet"
