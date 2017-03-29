@@ -683,9 +683,16 @@
                                             "done\n",                                            
                                             "#\n",
                                             "function pushFiles() {\n",
-                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/bgp_peers.sh centos@${1}:/opt/bgp_peers.sh\n",
-                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/create_secret.sh centos@${1}:/opt/create_secret.sh\n",
-                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/vs_config.yaml centos@${1}:/opt/vs_config.yaml\n",
+                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/bgp_peers.sh centos@${1}:~/bgp_peers.yaml\n",
+                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/create_secret.sh centos@${1}:~/create_secret.sh\n",
+                                            "    scp -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /config/vs_config.yaml centos@${1}:~/vs_config.yaml\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo mv ~/bgp_peers.yaml /opt/bgp_peers.yaml\"\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo mv ~/create_secret.sh /opt/create_secret.sh\"\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo mv ~/vs_config.yaml /opt/vs_config.yaml\"\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo chown centos:centos /opt/bgp_peers.yaml\"\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo chown centos:centos /opt/create_secret.sh\"\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo chown centos:centos /opt/vs_config.yaml\"\n",
+                                            "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"sudo chmod +x /opt/create_secret.sh\"\n",
                                             "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"/opt/create_secret.sh\"\n",
                                             "    ssh -i /config/privatekey.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no centos@${1} \"/opt/fix_bgp_peers.sh\"\n",
                                             "}\n",
@@ -693,8 +700,6 @@
                                             "pushFiles ${ipAddress}\n",
                                             "#\n",
                                             "tmsh create sys folder /kubernetes\n",
-                                            "#\n",
-                                            "tmsh create net route 10.10.32.0/19 gw 10.10.20.1\n",
                                             "exit\n"
                                         ]
                                     ]
