@@ -793,23 +793,23 @@
                             "006-network-config": {
                                 "command": {
                                     "Fn::Join": [
-                                        " ",
+                                        "",
                                         [
-                                            "nohup /config/waitThenRun.sh",
-                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/network.js",
-                                            "-o /var/log/networkConfig.log",
-                                            "--log-level debug",
-                                            "--wait-for ONBOARD_DONE",
-                                            "--signal NETWORK_CONFIG_DONE",
-                                            "--host localhost",
-                                            "--user admin",
-                                            "--password",
+                                            "nohup /config/waitThenRun.sh ",
+                                            "f5-rest-node /config/cloud/aws/node_modules/f5-cloud-libs/scripts/network.js ",
+                                            "-o /var/log/networkConfig.log ",
+                                            "--log-level debug ",
+                                            "--wait-for ONBOARD_DONE ",
+                                            "--signal NETWORK_CONFIG_DONE ",
+                                            "--host localhost ",
+                                            "--user admin ",
+                                            "--password ",
                                             {
                                                 "Ref": "adminPassword"
                                             },
-                                            "--default-gw 10.10.1.1",
-                                            "--vlan 'External, 1.1'",
-                                            "--vlan 'Internal, 1.2'",
+                                            " --default-gw 10.10.1.1 ",
+                                            "--vlan 'External, 1.1' ",
+                                            "--vlan 'Internal, 1.2' ",
                                             "--self-ip 'external_self_ip, ",
                                             {
                                                 "Fn::GetAtt": [
@@ -825,7 +825,7 @@
                                                     "PrimaryPrivateIpAddress"
                                                 ]
                                             },
-                                            "/19, Internal'",
+                                            "/19, Internal' ",
                                             "&>> /var/log/cloudlibs-install.log &"
                                         ]
                                     ]
