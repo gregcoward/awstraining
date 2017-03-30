@@ -268,7 +268,9 @@
                                 "s3:*"
                             ],
                             "Resource": [
+                                {"Fn::Join":["",["arn:aws:s3:::",{ "Ref": "s3Bucket" }]]},
                                 {"Fn::Join":["",["arn:aws:s3:::",{ "Ref": "s3Bucket" },"/*"]]},
+                                {"Fn::Join":["",["arn:aws:s3:::",{ "Ref": "S3BucketName" }]]},
                                 {"Fn::Join":["",["arn:aws:s3:::",{ "Ref": "S3BucketName" },"/*"]]}
                             ]
                         },
@@ -296,6 +298,11 @@
                             "Effect": "Allow",
                             "Action": "autoscaling:*",
                             "Resource": "*"
+                        },
+                        {
+                            "Action": "route53:*",
+                            "Resource": "*",
+                            "Effect": "Allow"
                         }
                     ]
                 },
@@ -348,6 +355,46 @@
                                                 "Ref": "KopsInstanceWaitHandle"
                                             },
                                             "'\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/root/.aws/credentials":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[default]\n",
+                                            "aws_access_key_id=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+                                            { "Fn::GetAtt" : ["KOPSRole", "Arn"] },
+                                            "/AccessKeyId |jq --raw-output '.AccessKeyId')\n",
+                                            "aws_secret_access_key=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+                                            { "Fn::GetAtt" : ["KOPSRole", "Arn"] },
+                                            "/AccessKeyId |jq --raw-output '.SecretAccessKey')\n",
+                                            "aws_session_token=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+                                            { "Fn::GetAtt" : ["KOPSRole", "Arn"] },
+                                            "/AccessKeyId |jq --raw-output '.Token')\n",
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/root/.aws/config":{
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[default]\n",
+                                            "output = json\n",
+                                            "region = ",
+                                            { "Ref": "AWS::Region" },
+                                            "\n"
                                         ]
                                     ]
                                 },
