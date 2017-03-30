@@ -670,6 +670,7 @@
                                             "                                secretKeyRef:\n",
                                             "                                    name: bigip-credentials\n",
                                             "                                    key: password\n",
+                                            "                        - \n",
                                             "                            name: BIGIP_URL\n",
                                             "                            valueFrom:\n",
                                             "                                secretKeyRef:\n",
@@ -683,7 +684,6 @@
                                             "                        - '--bigip-url=$(BIGIP_URL)'\n",
                                             "                        - '--bigip-partition=kubernetes'\n",
                                             "                        - '--namespace=default'\n",
-                                            "                        - '--bigip-partition=kubernetes'\n",
                                             "                        - '--pool-member-type=cluster'\n"
                                         ]
                                     ]
@@ -1090,6 +1090,15 @@
             },
             "Export": {
                 "Name": {"Fn::Sub": "${AWS::StackName}-StackVPC"}
+            }
+        },
+        "S3BucketName": {
+            "Description": "The S3 Bucket withe the files in it.",
+            "Value": {
+                "Ref": "S3BucketName"
+            },
+            "Export": {
+                "Name": {"Fn::Sub": "${AWS::StackName}-S3BucketName"}
             }
         },
         "StackInternetGateway": {

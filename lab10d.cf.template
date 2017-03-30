@@ -37,8 +37,7 @@
                     },
                     "Parameters": [                        
                         "internalSubnet",
-                        "assignedStackName",
-                        "S3BucketName"
+                        "assignedStackName"
 
                     ]
                 }
@@ -95,10 +94,6 @@
         "internalSubnet": {
             "Description": "This is the subnet that the Kubernetes Cluster is connected to.  Please select from the list.",
             "Type": "AWS::EC2::Subnet::Id"
-        },
-        "S3BucketName": {
-            "Description": "The name of the S3 bucket that contains the private key and container connector tar ball.",
-            "Type": "String"
         }
     },
     "Resources": {
@@ -667,7 +662,7 @@
                                 "group": "root"
                             },
                             "/config/privatekey.pem":{
-                                "source": {"Fn::Join":["",["http://",{ "Ref": "S3BucketName" },".s3.amazonaws.com/tstanley933.pem"]]},
+                                "source": {"Fn::Join":["",["http://",{ "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-S3BucketName" } },".s3.amazonaws.com/tstanley933.pem"]]},
                                 "mode": "000400",
                                 "owner": "root",
                                 "group": "root",
@@ -817,7 +812,7 @@
                                                     "PrimaryPrivateIpAddress"
                                                 ]
                                             },
-                                            ", External'",
+                                            ", External' ",
                                             "--self-ip 'internal_self_ip, ",
                                             {
                                                 "Fn::GetAtt": [
@@ -886,7 +881,7 @@
                     "S3AccessCreds": {
                         "type": "S3",
                         "roleName": {"Ref": "BIGIPS3Role"},
-                        "buckets": [ { "Ref": "S3BucketName" } ]
+                        "buckets": [ { "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-S3BucketName" } } ]
                     }
                 }
             },
