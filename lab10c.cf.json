@@ -361,30 +361,7 @@
                                 "mode": "000755",
                                 "owner": "root",
                                 "group": "root"
-                            },
-                            "/root/.aws/credentials":{
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[default]\n",
-                                            "aws_access_key_id=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/",
-                                            { "Fn::GetAtt" : ["KOPSRole", "Arn"] },
-                                            "/AccessKeyId |jq --raw-output '.AccessKeyId')\n",
-                                            "aws_secret_access_key=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/",
-                                            { "Fn::GetAtt" : ["KOPSRole", "Arn"] },
-                                            "/AccessKeyId |jq --raw-output '.SecretAccessKey')\n",
-                                            "aws_session_token=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/",
-                                            { "Fn::GetAtt" : ["KOPSRole", "Arn"] },
-                                            "/AccessKeyId |jq --raw-output '.Token')\n",
-                                            "\n"
-                                        ]
-                                    ]
-                                },
-                                "mode": "000755",
-                                "owner": "root",
-                                "group": "root"
-                            },
+                            },                            
                             "/root/.aws/config":{
                                 "content": {
                                     "Fn::Join": [
@@ -944,7 +921,19 @@
                                             "    echo \"**********Deploy Calico Failed!**********\"\n",
                                             "    /opt/signalFailure.sh\n",
                                             "    exit 12\n",                                            
-                                            "fi\n",                                               
+                                            "fi\n",
+                                             "function deployDashBoard() {\n",
+                                            "    echo \"**********Deploy Kubernetes Dashboard.**********\"\n",
+                                            "    kubectl create -f https://rawgit.com/kubernetes/dashboard/master/src/deploy/kubernetes-dashboard.yaml\n",
+                                            "}\n",
+                                            "deployDashBoard\n",
+                                            "if [[ $? == 0 ]]; then\n",
+                                            "    echo \"**********Deploy Kubernetes Dashboard Succeeded.**********\"\n",
+                                            "else\n",
+                                            "    echo \"**********Deploy Kubernetes Dashboard Failed!**********\"\n",
+                                            "    /opt/signalFailure.sh\n",
+                                            "    exit 12\n",                                            
+                                            "fi\n",                                                
                                             "date\n",
                                             "#**********Delete the K8's secret file that contains sensitive data.**********\n",
                                             "echo \"Finished Installing tools and K8's Cluster\"",
