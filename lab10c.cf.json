@@ -380,7 +380,7 @@
                                 "group": "root"
                             },
                             "/home/centos/privatekey.pem":{
-                                "source": {"Fn::Join":["",["http://",{ "Ref": "S3BucketName" },".s3.amazonaws.com/tstanley933.pem"]]},
+                                "source": {"Fn::Join":["",["http://",{ "Ref": "S3BucketName" },".s3.amazonaws.com/",{ "Ref": "KeyName"},".pem"]]},
                                 "mode": "000400",
                                 "owner": "centos",
                                 "group": "centos",

@@ -351,7 +351,8 @@
                                 "s3:*"
                             ],
                             "Resource": [
-                                "arn:aws:s3:::f5awstraining2017/*"
+                                {"Fn::Join":["",["arn:aws:s3:::",{ "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-S3BucketName" } }]]},
+                                {"Fn::Join":["",["arn:aws:s3:::",{ "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-S3BucketName" } },"/*"]]}
                             ]
                         }                        
                     ]
@@ -662,7 +663,7 @@
                                 "group": "root"
                             },
                             "/config/privatekey.pem":{
-                                "source": {"Fn::Join":["",["http://",{ "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-S3BucketName" } },".s3.amazonaws.com/tstanley933.pem"]]},
+                                "source": {"Fn::Join":["",["http://",{ "Fn::ImportValue": {"Fn::Sub": "${assignedStackName}-S3BucketName" } },".s3.amazonaws.com/",{ "Ref": "KeyName"},".pem"]]},
                                 "mode": "000400",
                                 "owner": "root",
                                 "group": "root",
