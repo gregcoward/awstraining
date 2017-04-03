@@ -30,7 +30,9 @@
             "default": "Settings"
           },
           "Parameters": [
-            "appConnectorAMI"
+            "appConnectorAMI",
+            "S3BucketName",
+            "appConnectorTarBallName"
           ]
         }
       ],
@@ -87,8 +89,17 @@
       "Default": "ami-d2c924b2",
       "AllowedValues": [
         "ami-d2c924b2",
-        "ami-6d1c2007"
+        "ami-6d1c2007",
+        "ami-6a2d760f"
       ]
+    },
+    "S3BucketName": {
+      "Type": "String",
+      "Description": "The name of the S3 Bucket where the application connector tar ball is located."
+    },
+    "appConnectorTarBallName": {
+      "Type": "String",
+      "Description": "The name of the application connector tar ball to be downloaded."
     }
   },
   "Resources": {
@@ -350,6 +361,118 @@
       }
     },
 
+    "appConnectorRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Path": "/"
+      }
+    },
+
+    "appConnectorPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "appConnectorPolicy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:*"
+              ],
+              "Resource": [                
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "S3BucketName"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "S3BucketName"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": "iam:*",
+              "Resource": "*"
+            },
+            {
+              "Action": "ec2:*",
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": "elasticloadbalancing:*",
+              "Resource": "*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": "cloudwatch:*",
+              "Resource": "*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": "autoscaling:*",
+              "Resource": "*"
+            },
+            {
+              "Action": "route53:*",
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "appConnectorRole"
+          }
+        ]
+      }
+    },
+    
+    "appConnectorInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "appConnectorRole"
+          }
+        ],
+        "Path": "/"
+      }
+    },
+    
     "appConnectorInstance": {
       "DependsOn": "ServerNATGateway",
       "Type": "AWS::EC2::Instance",
@@ -375,18 +498,21 @@
                 "owner": "root",
                 "group": "root"
               },
-              "/opt/proxy-0-0-1.tgz": {
-                "source": "https://raw.githubusercontent.com/gregcoward/awstraining/master/proxy-0-0-1.tgz",
+              "/opt/proxy.tar.gz": {
+                "source": {"Fn::Join":["",["http://",{ "Ref": "S3BucketName" },".s3.amazonaws.com/",{ "Ref": "appConnectorTarBallName"}]]},
                 "mode": "000644",
                 "owner": "root",
-                "group": "root"
+                "group": "root",
+                "authentication": "S3AccessCreds"
               },
               "/opt/aws_config.json": {
                 "content": {
                   "Fn::Join": [
                     "",
                     [
-                      "{\"accessKeyId\":\"AKIAIGO7NENBYVY3DW6Q\",\"secretAccessKey\":\"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\",\"region\":\"us-west-2\"}"
+                      "{\"accessKeyId\":\"REPKEY\",\"secretAccessKey\":\"REPSECRET\",\"region\":\"",
+                      { "Ref": "AWS::Region"},
+                      "\"}"
                     ]
                   ]
                 }
@@ -407,6 +533,12 @@
                       "# Install Docker\n",
                       "yum -y install docker\n",
                       "#\n",
+                      "#Start Docker",
+                      "systemctl start docker\n",
+                      "systemctl status docker\n",
+                      "systemctl enable docker\n",
+                      "#\n",
+                      "#Fix the aws_config.json",
                       "# Extract the proxy and load into docker\n",
                       "cd /opt\n",
                       "tar -zxvf /opt/proxy-0-0-1.tgz | docker load\n",
@@ -443,6 +575,13 @@
               }
             }
           }
+        },
+        "AWS::CloudFormation::Authentication": {
+          "S3AccessCreds": {
+            "type": "S3",
+            "roleName": {"Ref": "appConnectorRole"},
+            "buckets": [{"Ref": "S3BucketName"}]
+          }
         }
       },
       "Properties": {
@@ -454,6 +593,9 @@
         },
         "KeyName": {
           "Ref": "KeyName"
+        },
+        "IamInstanceProfile": {
+          "Ref": "appConnectorInstanceProfile"
         },
         "SubnetId": {
           "Ref": "externalSubnet"
