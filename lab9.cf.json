@@ -505,7 +505,7 @@
                 "group": "root",
                 "authentication": "S3AccessCreds"
               },
-              "/opt/aws_config.json": {
+              "/home/centos/cloud_vendors/aws/aws_config.json": {
                 "content": {
                   "Fn::Join": [
                     "",
@@ -530,8 +530,14 @@
                       "# Install Node\n",
                       "yum -y install nodejs\n",
                       "#\n",
+                      "# Install JQ\n",
+                      "yum -y install jq\n",
+                      "#\n",
                       "# Install Docker\n",
-                      "yum -y install docker\n",
+                      "yum -y install yum-utils\n",
+                      "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo\n",
+                      "yum -y makecache fast\n",
+                      "yum -y install docker-ce\n",
                       "#\n",
                       "#Start Docker",
                       "systemctl start docker\n",
@@ -539,6 +545,7 @@
                       "systemctl enable docker\n",
                       "#\n",
                       "#Fix the aws_config.json",
+                      "function fix_aws_config() {",
                       "# Extract the proxy and load into docker\n",
                       "cd /opt\n",
                       "tar -zxvf /opt/proxy-0-0-1.tgz | docker load\n",

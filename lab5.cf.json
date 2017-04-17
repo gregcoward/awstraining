@@ -9,7 +9,9 @@
             "default": "Basics"
           },
           "Parameters": [
-            "WindowsName",
+            "WindowsName1",
+            "WindowsName2",
+            "WindowsName3",
             "KeyName",
             "adminUsername",
             "adminPassword"
@@ -41,7 +43,15 @@
       "Type": "AWS::EC2::KeyPair::KeyName",
       "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
     },
-    "WindowsName": {
+    "WindowsName1": {
+      "Description": "The name of the Windows Server.",
+      "Type": "String"
+    },
+    "WindowsName2": {
+      "Description": "The name of the Windows Server.",
+      "Type": "String"
+    },
+    "WindowsName3": {
       "Description": "The name of the Windows Server.",
       "Type": "String"
     },
@@ -143,7 +153,7 @@
         ]
       }
     },
-    "StackSubnet": {
+    "StackSubnet1": {
       "Type": "AWS::EC2::Subnet",
       "Properties": {
         "VpcId": {
@@ -154,17 +164,39 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": {
-              "Fn::Join": [
-                "",
-                [
-                  "Subnet-",
-                  {
-                    "Ref": "AWS::StackName"
-                  }
-                ]
-              ]
-            }
+            "Value": "StackSubnet1"
+          }
+        ]
+      }
+    },
+    "StackSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "CidrBlock": "10.10.21.0/24",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "StackSubnet2"
+          }
+        ]
+      }
+    },
+    "StackSubnet3": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "CidrBlock": "10.10.22.0/24",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "StackSubnet3"
           }
         ]
       }
@@ -237,14 +269,71 @@
         }
       }
     },
-    "ExternalSubnetRouteTableAssociation": {
+    "ExternalSubnetRouteTableAssociation1": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "SubnetId": {
-          "Ref": "StackSubnet"
+          "Ref": "StackSubnet1"
         },
         "RouteTableId": {
           "Ref": "ExternalRouteTable"
+        }
+      }
+    },
+    "ExternalSubnetRouteTableAssociation2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "StackSubnet2"
+        },
+        "RouteTableId": {
+          "Ref": "ExternalRouteTable"
+        }
+      }
+    },
+    "ExternalSubnetRouteTableAssociation3": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "StackSubnet3"
+        },
+        "RouteTableId": {
+          "Ref": "ExternalRouteTable"
+        }
+      }
+    },
+    "StackELB01": {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Subnets" : [
+          { "Ref": "StackSubnet1" },
+          { "Ref": "StackSubnet2" },
+          { "Ref": "StackSubnet3" }
+        ],
+        "Instances": [
+          {
+            "Ref": "WindowsInstance1"
+          },
+          {
+            "Ref": "WindowsInstance2"
+          },
+          {
+            "Ref": "WindowsInstance3"
+          }
+        ],
+        "Listeners": [
+          {
+            "LoadBalancerPort": "80",
+            "InstancePort": "80",
+            "Protocol": "HTTP"
+          }
+        ],
+        "HealthCheck": {
+          "Target": "80",
+          "HealthyThreshold": "3",
+          "UnhealthyThreshold": "5",
+          "Interval": "30",
+          "Timeout": "5"
         }
       }
     },
@@ -271,7 +360,7 @@
         ]
       }
     },
-    "WindowsInstance": {
+    "WindowsInstance1": {
       "Type": "AWS::EC2::Instance",
       "Metadata": {
         "AWS::CloudFormation::Init": {
@@ -293,7 +382,7 @@
                       "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
                       "echo \"This is the first Windows IIS Server ",
                       {
-                        "Ref": "WindowsName"
+                        "Ref": "WindowsName1"
                       },
                       "\" >> C:\\inetpub\\wwwroot\\index.html\n",
                       "$pass = ConvertTo-SecureString \"",
@@ -331,7 +420,7 @@
           "Ref": "KeyName"
         },
         "SubnetId": {
-          "Ref": "StackSubnet"
+          "Ref": "StackSubnet1"
         },
         "SecurityGroupIds": [
           {
@@ -352,7 +441,7 @@
                 {
                   "Ref": "AWS::StackId"
                 },
-                " --resource WindowsInstance",
+                " --resource WindowsInstance1",
                 " --configsets IIS_Install ",
                 " --region ",
                 {
@@ -362,7 +451,7 @@
                 "cfn-signal.exe -e %ERRORLEVEL% ",
                 {
                   "Fn::Base64": {
-                    "Ref": "WindowsInstanceWaitHandle"
+                    "Ref": "WindowsInstance1WaitHandle"
                   }
                 },
                 "\n",
@@ -373,15 +462,245 @@
         }
       }
     },
-    "WindowsInstanceWaitHandle": {
+    "WindowsInstance2": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "IIS_Install": [
+              "install_IIS"
+            ]
+          },
+          "install_IIS": {
+            "files": {
+              "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "echo \"Installing web-webserver\"\n",
+                      "add-windowsfeature web-webserver -includeallsubfeature -logpath $env:temp\\webserver_addrole.log\n",
+                      "echo \"Installing web-mgmt-tools\"\n",
+                      "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
+                      "echo \"This is the first Windows IIS Server ",
+                      {
+                        "Ref": "WindowsName2"
+                      },
+                      "\" >> C:\\inetpub\\wwwroot\\index.html\n",
+                      "$pass = ConvertTo-SecureString \"",
+                      {
+                        "Ref": "adminPassword"
+                      },
+                      "\" -AsPlainText -Force\n",
+                      "New-LocalUser -Name \"tstanley\" -Password $pass -PasswordNeverExpires\n",
+                      "Add-LocalGroupMember -Group \"Administrators\" -Member \"",
+                      {
+                        "Ref": "adminUsername"
+                      },
+                      "\"\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "commands": {
+              "b-configure": {
+                "command": "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "InstanceType": {
+          "Ref": "WindowsInstanceType"
+        },
+        "ImageId": {
+          "Ref": "WindowsAMI"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "StackSubnet2"
+        },
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "WindowsSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "<script>\n",
+                "cfn-init.exe -v ",
+                " --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
+                " --resource WindowsInstance2",
+                " --configsets IIS_Install ",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "cfn-signal.exe -e %ERRORLEVEL% ",
+                {
+                  "Fn::Base64": {
+                    "Ref": "WindowsInstance2WaitHandle"
+                  }
+                },
+                "\n",
+                "</script>"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "WindowsInstance3": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "IIS_Install": [
+              "install_IIS"
+            ]
+          },
+          "install_IIS": {
+            "files": {
+              "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "echo \"Installing web-webserver\"\n",
+                      "add-windowsfeature web-webserver -includeallsubfeature -logpath $env:temp\\webserver_addrole.log\n",
+                      "echo \"Installing web-mgmt-tools\"\n",
+                      "add-windowsfeature web-mgmt-tools -includeallsubfeature -logpath $env:temp\\mgmttools_addrole.log\n",
+                      "echo \"This is the first Windows IIS Server ",
+                      {
+                        "Ref": "WindowsName3"
+                      },
+                      "\" >> C:\\inetpub\\wwwroot\\index.html\n",
+                      "$pass = ConvertTo-SecureString \"",
+                      {
+                        "Ref": "adminPassword"
+                      },
+                      "\" -AsPlainText -Force\n",
+                      "New-LocalUser -Name \"tstanley\" -Password $pass -PasswordNeverExpires\n",
+                      "Add-LocalGroupMember -Group \"Administrators\" -Member \"",
+                      {
+                        "Ref": "adminUsername"
+                      },
+                      "\"\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "commands": {
+              "b-configure": {
+                "command": "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "InstanceType": {
+          "Ref": "WindowsInstanceType"
+        },
+        "ImageId": {
+          "Ref": "WindowsAMI"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "StackSubnet3"
+        },
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "WindowsSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "<script>\n",
+                "cfn-init.exe -v ",
+                " --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
+                " --resource WindowsInstance3",
+                " --configsets IIS_Install ",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "cfn-signal.exe -e %ERRORLEVEL% ",
+                {
+                  "Fn::Base64": {
+                    "Ref": "WindowsInstance3WaitHandle"
+                  }
+                },
+                "\n",
+                "</script>"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "WindowsInstance1WaitHandle": {
       "Type": "AWS::CloudFormation::WaitConditionHandle"
     },
-    "WindowsInstanceWaitCondition": {
+    "WindowsInstance1WaitCondition": {
       "Type": "AWS::CloudFormation::WaitCondition",
-      "DependsOn": "WindowsInstance",
+      "DependsOn": "WindowsInstance1",
       "Properties": {
         "Handle": {
-          "Ref": "WindowsInstanceWaitHandle"
+          "Ref": "WindowsInstance1WaitHandle"
+        },
+        "Timeout": "900"
+      }
+    },
+    "WindowsInstance2WaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "WindowsInstance2WaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "WindowsInstance2",
+      "Properties": {
+        "Handle": {
+          "Ref": "WindowsInstance2WaitHandle"
+        },
+        "Timeout": "900"
+      }
+    },
+    "WindowsInstance3WaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "WindowsInstance3WaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "WindowsInstance3",
+      "Properties": {
+        "Handle": {
+          "Ref": "WindowsInstance3WaitHandle"
         },
         "Timeout": "900"
       }
@@ -397,8 +716,8 @@
             "http://",
             {
               "Fn::GetAtt": [
-                "WindowsInstance",
-                "PublicDnsName"
+                "StackELB01",
+                "DNSName"
               ]
             }
           ]
