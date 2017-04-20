@@ -73,52 +73,17 @@
       "Type": "String",
       "Default": "t2.small",
       "AllowedValues": [
-        "t1.micro",
         "t2.micro",
         "t2.small",
-        "t2.medium",
-        "m1.small",
-        "m1.medium",
-        "m1.large",
-        "m1.xlarge",
-        "m2.xlarge",
-        "m2.2xlarge",
-        "m2.4xlarge",
-        "m3.medium",
-        "m3.large",
-        "m3.xlarge",
-        "m3.2xlarge",
-        "c1.medium",
-        "c1.xlarge",
-        "c3.large",
-        "c3.xlarge",
-        "c3.2xlarge",
-        "c3.4xlarge",
-        "c3.8xlarge",
+        "t2.medium",        
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
         "c4.large",
         "c4.xlarge",
         "c4.2xlarge",
         "c4.4xlarge",
-        "c4.8xlarge",
-        "g2.2xlarge",
-        "r3.large",
-        "r3.xlarge",
-        "r3.2xlarge",
-        "r3.4xlarge",
-        "r3.8xlarge",
-        "i2.xlarge",
-        "i2.2xlarge",
-        "i2.4xlarge",
-        "i2.8xlarge",
-        "d2.xlarge",
-        "d2.2xlarge",
-        "d2.4xlarge",
-        "d2.8xlarge",
-        "hi1.4xlarge",
-        "hs1.8xlarge",
-        "cr1.8xlarge",
-        "cc2.8xlarge",
-        "cg1.4xlarge"
+        "c4.8xlarge"
       ],
       "ConstraintDescription": "Choose one of the ."
     },
@@ -159,6 +124,15 @@
         "VpcId": {
           "Ref": "StackVPC"
         },
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "",
+            [
+              { "Ref": "AWS::Region" },
+              "a"
+            ]
+          ]
+        },
         "CidrBlock": "10.10.20.0/24",
         "MapPublicIpOnLaunch": true,
         "Tags": [
@@ -175,6 +149,15 @@
         "VpcId": {
           "Ref": "StackVPC"
         },
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "",
+            [
+              { "Ref": "AWS::Region" },
+              "b"
+            ]
+          ]
+        },
         "CidrBlock": "10.10.21.0/24",
         "MapPublicIpOnLaunch": true,
         "Tags": [
@@ -190,6 +173,15 @@
       "Properties": {
         "VpcId": {
           "Ref": "StackVPC"
+        },
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "",
+            [
+              { "Ref": "AWS::Region" },
+              "c"
+            ]
+          ]
         },
         "CidrBlock": "10.10.22.0/24",
         "MapPublicIpOnLaunch": true,
@@ -302,6 +294,23 @@
         }
       }
     },
+    "ELBSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow HTTP",
+        "VpcId": {
+          "Ref": "StackVPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
     "StackELB01": {
       "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
       "Properties": {
@@ -329,12 +338,15 @@
           }
         ],
         "HealthCheck": {
-          "Target": "80",
+          "Target": "HTTP:80/",
           "HealthyThreshold": "3",
           "UnhealthyThreshold": "5",
           "Interval": "30",
           "Timeout": "5"
-        }
+        },
+        "SecurityGroups":[
+          { "Ref": "ELBSecurityGroup" }
+        ]
       }
     },
     "WindowsSecurityGroup": {
