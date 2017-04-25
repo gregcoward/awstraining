@@ -12,6 +12,7 @@
             "WindowsName1",
             "WindowsName2",
             "WindowsName3",
+            "DBName",
             "KeyName",
             "adminUsername",
             "adminPassword"
@@ -55,6 +56,10 @@
       "Description": "The name of the Windows Server.",
       "Type": "String"
     },
+    "DBName": {
+      "Description": "The name of the Database Windows Server.",
+      "Type": "String"
+    },
     "adminUsername": {
       "Type": "String",
       "Description": "An admin username for loging into the Windows Server and BIG-IP.",
@@ -90,7 +95,12 @@
     "WindowsAMI": {
       "Description": "Windows Version and Region AMI",
       "Type": "String",
-      "Default": "ami-6e833e0e"
+      "Default": "ami-057d5860"
+    },
+    "DBAMI": {
+      "Description": "Windows Version and Region AMI",
+      "Type": "String",
+      "Default": "ami-65200400"
     }
   },
   "Resources": {
@@ -367,6 +377,12 @@
             "IpProtocol": "tcp",
             "FromPort": "3389",
             "ToPort": "3389",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "1433",
+            "ToPort": "1433",
             "CidrIp": "0.0.0.0/0"
           }
         ]
@@ -678,6 +694,98 @@
         }
       }
     },
+    "DBInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+              "C:\\Users\\Administrator\\Downloads\\firstrun.ps1": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "$pass = ConvertTo-SecureString \"",
+                      {
+                        "Ref": "adminPassword"
+                      },
+                      "\" -AsPlainText -Force\n",
+                      "New-LocalUser -Name \"",
+                      {
+                        "Ref": "adminUsername"
+                      },
+                      "\" -Password $pass -PasswordNeverExpires\n",
+                      "Add-LocalGroupMember -Group \"Administrators\" -Member \"",
+                      {
+                        "Ref": "adminUsername"
+                      },
+                      "\"\n",
+                      ""
+                    ]
+                  ]
+                }
+              }
+            },
+            "commands": {
+              "b-configure": {
+                "command": "powershell.exe -ExecutionPolicy unrestricted C:\\Users\\Administrator\\Downloads\\firstrun.ps1"
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "InstanceType": {
+          "Ref": "WindowsInstanceType"
+        },
+        "ImageId": {
+          "Ref": "DBAMI"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SubnetId": {
+          "Ref": "StackSubnet3"
+        },
+        "SecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "WindowsSecurityGroup",
+              "GroupId"
+            ]
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "<script>\n",
+                "cfn-init.exe -v ",
+                " --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
+                " --resource DBInstance",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "cfn-signal.exe -e %ERRORLEVEL% ",
+                {
+                  "Fn::Base64": {
+                    "Ref": "DBInstanceWaitHandle"
+                  }
+                },
+                "\n",
+                "</script>"
+              ]
+            ]
+          }
+        }
+      }
+    },
     "WindowsInstance1WaitHandle": {
       "Type": "AWS::CloudFormation::WaitConditionHandle"
     },
@@ -713,6 +821,19 @@
       "Properties": {
         "Handle": {
           "Ref": "WindowsInstance3WaitHandle"
+        },
+        "Timeout": "900"
+      }
+    },
+    "DBInstanceWaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "DBInstanceWaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "DBInstance",
+      "Properties": {
+        "Handle": {
+          "Ref": "DBInstanceWaitHandle"
         },
         "Timeout": "900"
       }
