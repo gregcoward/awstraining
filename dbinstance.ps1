@@ -52,8 +52,8 @@ else {
         $sqlExist = $(& 'C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\110\Tools\Binn\SQLCMD.EXE' -S tcp:$dbserver,1433 -Q "IF DB_ID('nopcomm') IS NOT NULL BEGIN PRINT 'Database Exists' END")
         if (!$sqlExist) {
             ## Download the file:
-            Invoke-WebRequest https://raw.githubusercontent.com/gregcoward/awstraining/master/MsSqlCmdLnUtils.msi -OutFile c:\users\$username\downloads\MsSqlCmdLnUtils.msi
-            Unzip "C:\a.zip" "C:\inetpub\wwwroot\"
+            Invoke-WebRequest https://raw.githubusercontent.com/gregcoward/awstraining/master/nopCommerce_3.90_NoSource.zip -OutFile c:\users\$username\downloads\nopCommerce_3.90_NoSource.zip
+            Unzip "c:\users\$username\downloads\nopCommerce_3.90_NoSource.zip" "C:\inetpub\wwwroot\"
             $i = 1
         }
         else {
