@@ -12,39 +12,53 @@ $pass = ConvertTo-SecureString $password -AsPlainText -Force
 New-LocalUser -Name $username -Password $pass -PasswordNeverExpires
 Add-LocalGroupMember -Group \"Administrators\" -Member $username
 
-## Functions
-function instTools {
-    Invoke-WebRequest https://raw.githubusercontent.com/gregcoward/awstraining/master/MsSqlCmdLnUtils.msi -OutFile c:\users\$username\downloads\MsSqlCmdLnUtils.msi
-    Invoke-WebRequest https://raw.githubusercontent.com/gregcoward/awstraining/master/msodbcsql.msi -OutFile C:\Users\$username\downloads\msodbcsql.msi
+#region Functions
+function instTools ($username) {
+    Invoke-WebRequest "https://raw.githubusercontent.com/gregcoward/awstraining/master/MsSqlCmdLnUtils.msi" -OutFile "c:\users\$username\downloads\MsSqlCmdLnUtils.msi"
+    Invoke-WebRequest "https://raw.githubusercontent.com/gregcoward/awstraining/master/msodbcsql.msi" -OutFile "C:\Users\$username\downloads\msodbcsql.msi"
     msiexec.exe /i "C:\Users\$username\downloads\msodbcsql.msi" /qn IACCEPTMSODBCSQLLICENSETERMS=YES
     msiexec /i "c:\users\$username\downloads\MsSqlCmdLnUtils.msi" /qn IACCEPTMSSQLCMDLNUTILSLICENSETERMS=YES
 }
 
-function createDb {
+function createDb ($username) {
     & 'C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\110\Tools\Binn\SQLCMD.EXE' -E -S localhost -Q "CREATE LOGIN [$env:COMPUTERNAME\$username] FROM WINDOWS WITH DEFAULT_DATABASE=[master]"
     & 'C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\110\Tools\Binn\SQLCMD.EXE' -E -S localhost -Q "EXEC [sys].[sp_addsrvrolemember] @loginame = N'$env:COMPUTERNAME\$username', @rolename = N'sysadmin'"
     & 'C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\110\Tools\Binn\SQLCMD.EXE' -E -S localhost -Q "CREATE DATABASE nopcomm"
 }
 
+function Unzip {
+    param([string]$zipfile, [string]$outpath)
+
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+}
+#endregion
 ##  Check if we are the DB server or are a webserver ...
 $serverType = $(Test-Path C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\110\Tools\Binn\SQLCMD.EXE)
 
 if ($serverType -eq $True) {
     ## Then we are the database server
+    ## Add user and create the database.
+    createDb $username
+    exit 
 }
 else {
     ## Then we are a webserver
-}
+    ## Install SQL Tools
+    instTools $username
 
-
-$sqlExist = $(& 'C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\110\Tools\Binn\SQLCMD.EXE' -S tcp:$dbserver,1433 -Q "IF DB_ID('nopcomm') IS NOT NULL BEGIN PRINT 'Database Exists' END")
-if (!$sqlExist) {
-    Unzip "C:\a.zip" "C:\inetpub\wwwroot\"
-}
-
-function Unzip
-{
-    param([string]$zipfile, [string]$outpath)
-
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+    ## Wait until Database Server and Database exist, then install nopComm
+    $i = 0
+    do {
+        $sqlExist = $(& 'C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\110\Tools\Binn\SQLCMD.EXE' -S tcp:$dbserver,1433 -Q "IF DB_ID('nopcomm') IS NOT NULL BEGIN PRINT 'Database Exists' END")
+        if (!$sqlExist) {
+            ## Download the file:
+            Invoke-WebRequest https://raw.githubusercontent.com/gregcoward/awstraining/master/MsSqlCmdLnUtils.msi -OutFile c:\users\$username\downloads\MsSqlCmdLnUtils.msi
+            Unzip "C:\a.zip" "C:\inetpub\wwwroot\"
+            $i = 1
+        }
+        else {
+            Write-Host "Sleeping for 10 Seconds"
+            Start-Sleep -Seconds 10
+        }
+    } while ($i -eq 0)
 }
