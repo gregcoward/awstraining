@@ -72,12 +72,7 @@
         "KopsInstanceAMI": {
             "Description": "Ubuntu Version and Region AMI",
             "Type": "String",
-            "Default": "ami-d2c924b2",
-            "AllowedValues": [
-                "ami-d2c924b2",
-                "ami-6d1c2007",
-                "ami-6a2d760f"
-            ]
+            "Default": ""
         },
         "route53DNSDomain": {
             "Type": "String",
